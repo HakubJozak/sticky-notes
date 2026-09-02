@@ -1,0 +1,53 @@
+{
+  "name": "@hakubjozak/sticky-notes",
+  "version": "0.1.0",
+  "description": "In-place review layer for any web page — pin notes to elements, export CSS path · text · comment.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Jakub Hozák",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "main": "./dist/sticky-notes.js",
+  "module": "./dist/sticky-notes.js",
+  "exports": {
+    ".": "./dist/sticky-notes.js",
+    "./stimulus": "./dist/stimulus.js",
+    "./turbo": "./dist/turbo.js",
+    "./iife": "./dist/sticky-notes.iife.js",
+    "./package.json": "./package.json"
+  },
+  "sideEffects": [
+    "*.css"
+  ],
+  "scripts": {
+    "build": "vite build && vite build --config vite.iife.config.js",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "prepublishOnly": "npm run lint && npm test && npm run build"
+  },
+  "peerDependencies": {
+    "@hotwired/stimulus": ">=3"
+  },
+  "peerDependenciesMeta": {
+    "@hotwired/stimulus": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "eslint": "^9.0.0",
+    "globals": "^15.0.0",
+    "jsdom": "^25.0.1",
+    "vite": "^6.0.0",
+    "vitest": "^2.1.9"
+  },
+  "keywords": [
+    "review",
+    "annotations",
+    "sticky-notes",
+    "stimulus",
+    "turbo"
+  ]
+}

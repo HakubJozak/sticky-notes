@@ -1,0 +1,207 @@
+/* Injected once at mount as <style id="sticky-notes-style">.
+   `all: unset` on controls and a z-index near the maximum keep the layer intact
+   on host pages with aggressive CSS. Host pages may lack a [hidden] reset, so we
+   ship our own. */
+
+.sticky-notes-bar {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 2147482930;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  background: var(--card, #fff);
+  color: var(--ink, #1e2430);
+  border: 1px solid var(--line, #c8ccd4);
+  padding: 6px 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  font: 12px "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+
+.sticky-notes-bar__button {
+  all: unset;
+  cursor: pointer;
+  padding: 6px 10px;
+  border: 1px solid var(--line, #c8ccd4);
+  font: inherit;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.sticky-notes-bar__button:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.sticky-notes-bar__button[aria-pressed="true"] {
+  background: #e0b400;
+  color: #1e2430;
+  border-color: #e0b400;
+}
+
+.sticky-notes-bar__count {
+  opacity: 0.6;
+  min-width: 3ch;
+  text-align: center;
+}
+
+.sticky-notes-bar__message {
+  opacity: 0.6;
+}
+
+body.sticky-notes-picking,
+body.sticky-notes-picking * {
+  cursor: crosshair !important;
+}
+
+.sticky-notes-hover {
+  outline: 2px dashed #e0b400 !important;
+  outline-offset: 2px;
+}
+
+.sticky-notes-anchor {
+  outline: 2px solid #e0b400 !important;
+  outline-offset: 2px;
+}
+
+.sticky-notes-leaders {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 2147482900;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.sticky-note {
+  position: absolute;
+  z-index: 2147482920;
+  width: 240px;
+  height: 110px;
+  min-width: 160px;
+  min-height: 72px;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  resize: both;
+  overflow: hidden;
+  margin: 0;
+  background: #fff3b0;
+  color: #1e2430;
+  border: 1px solid #d9b93c;
+  border-radius: 0;
+  box-shadow: 2px 3px 0 rgba(0, 0, 0, 0.18);
+  padding: 6px 8px 8px;
+  font: 12px/1.4 "IBM Plex Sans", system-ui, sans-serif;
+  text-align: left;
+}
+
+.sticky-note[hidden],
+.sticky-notes-export[hidden] {
+  display: none !important;
+}
+
+.sticky-note--dragging {
+  box-shadow: 6px 8px 0 rgba(0, 0, 0, 0.22);
+  opacity: 0.95;
+}
+
+.sticky-note__header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 4px;
+  padding: 0;
+  font: 600 11px "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color: #6b5a12;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.sticky-note--dragging .sticky-note__header {
+  cursor: grabbing;
+}
+
+.sticky-note__index {
+  background: #1e2430;
+  color: #fff3b0;
+  border-radius: 9px;
+  padding: 0 6px;
+  font: inherit;
+}
+
+.sticky-note__path {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: inherit;
+  font-size: 10px;
+  background: none;
+  color: inherit;
+  padding: 0;
+}
+
+.sticky-note__button {
+  all: unset;
+  color: #6b5a12;
+  padding: 0 4px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 18px;
+}
+
+.sticky-note__button[data-command="remove"] {
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+.sticky-note__button[data-command="remove"]:hover {
+  color: #fff;
+  background: #b3261e;
+  border-color: #b3261e;
+}
+
+.sticky-note__text {
+  all: unset;
+  display: block;
+  flex: 1;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 0;
+  color: inherit;
+  font: inherit;
+  white-space: pre-wrap;
+  overflow: auto;
+}
+
+.sticky-note-badge {
+  position: absolute;
+  z-index: 2147482910;
+  background: #1e2430;
+  color: #fff3b0;
+  font: 700 10px "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  border-radius: 9px;
+  padding: 0 5px;
+  line-height: 16px;
+  cursor: pointer;
+}
+
+.sticky-notes-export {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: 64px;
+  max-height: 40vh;
+  overflow: auto;
+  z-index: 2147482930;
+  margin: 0;
+  background: var(--card, #fff);
+  color: var(--ink, #1e2430);
+  border: 1px solid var(--line, #c8ccd4);
+  padding: 12px;
+  font: 12px "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  white-space: pre-wrap;
+  text-align: left;
+}
