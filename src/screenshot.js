@@ -12,6 +12,7 @@ const MIN_SIZE = 8 // px; anything smaller was a click, not a drag
 const PNG = "image/png"
 const JPEG = "image/jpeg"
 const FILE_PREFIX = "screenshot"
+const MIN_EDGE = 1 // px; a canvas dimension of 0 makes toBlob resolve null
 export const JPEG_MAX_EDGE = 1568 // px; Claude's token cost follows pixel area
 export const JPEG_QUALITY = 0.85
 
@@ -104,36 +105,61 @@ export function captureRect(doc, { x, y, w, h }) {
   })
 }
 
+// The padded box in page coordinates, clamped to the document on every edge —
+// a box starting above/left of the origin shrinks instead of sliding into
+// unrelated content. Pure so the clamping math is testable without a DOM.
+export function paddedRect(box, scroll, page, padding) {
+  const left = clamp(box.left + scroll.x - padding, 0, page.scrollWidth)
+  const top = clamp(box.top + scroll.y - padding, 0, page.scrollHeight)
+  const right = clamp(box.left + scroll.x + box.width + padding, 0, page.scrollWidth)
+  const bottom = clamp(box.top + scroll.y + box.height + padding, 0, page.scrollHeight)
+
+  return {
+    x: Math.round(left),
+    y: Math.round(top),
+    w: Math.max(MIN_EDGE, Math.round(right - left)),
+    h: Math.max(MIN_EDGE, Math.round(bottom - top)),
+  }
+}
+
+const clamp = (value, min, max) => Math.min(Math.max(value, min), max)
+
 // The element's box plus padding, clamped to the document — auto-shot uses it.
 export function captureElement(doc, el, padding = 0) {
   const view = doc.defaultView
   const page = doc.documentElement
   const box = el.getBoundingClientRect()
-  const x = Math.max(0, Math.round(box.left + view.scrollX - padding))
-  const y = Math.max(0, Math.round(box.top + view.scrollY - padding))
-  const w = Math.min(page.scrollWidth - x, Math.round(box.width + 2 * padding))
-  const h = Math.min(page.scrollHeight - y, Math.round(box.height + 2 * padding))
+  const rect = paddedRect(box, { x: view.scrollX, y: view.scrollY }, { scrollWidth: page.scrollWidth, scrollHeight: page.scrollHeight }, padding)
 
-  return captureRect(doc, { x, y, w, h })
+  return captureRect(doc, rect)
 }
 
-export const toPng = (canvas) => new Promise((resolve) => canvas.toBlob(resolve, PNG))
+export const toPng = (canvas) => canvasToBlob(canvas, PNG)
+
+// Scaled output size for the long-edge cap — both edges floored at MIN_EDGE
+// so an extreme aspect ratio never rounds a dimension down to 0.
+export function jpegSize(cssWidth, cssHeight, maxEdge) {
+  const factor = Math.min(1, maxEdge / Math.max(cssWidth, cssHeight))
+
+  return {
+    width: Math.max(MIN_EDGE, Math.round(cssWidth * factor)),
+    height: Math.max(MIN_EDGE, Math.round(cssHeight * factor)),
+  }
+}
 
 // CSS scale (device pixels divided by dpr), long edge capped, JPEG → base64.
 export async function toJpeg(canvas, { maxEdge = JPEG_MAX_EDGE, quality = JPEG_QUALITY } = {}) {
   const doc = canvas.ownerDocument
   const view = doc.defaultView
   const dpr = view.devicePixelRatio || 1
-  const cssWidth = canvas.width / dpr
-  const cssHeight = canvas.height / dpr
-  const factor = Math.min(1, maxEdge / Math.max(cssWidth, cssHeight))
+  const { width, height } = jpegSize(canvas.width / dpr, canvas.height / dpr, maxEdge)
 
   const out = doc.createElement("canvas")
-  out.width = Math.round(cssWidth * factor)
-  out.height = Math.round(cssHeight * factor)
-  out.getContext("2d").drawImage(canvas, 0, 0, out.width, out.height)
+  out.width = width
+  out.height = height
+  out.getContext("2d").drawImage(canvas, 0, 0, width, height)
 
-  const blob = await new Promise((resolve) => out.toBlob(resolve, JPEG, quality))
+  const blob = await canvasToBlob(out, JPEG, quality)
   const dataUrl = await new Promise((resolve, reject) => {
     const reader = new view.FileReader()
     reader.onload = () => resolve(reader.result)
@@ -142,6 +168,12 @@ export async function toJpeg(canvas, { maxEdge = JPEG_MAX_EDGE, quality = JPEG_Q
   })
 
   return dataUrl.slice(dataUrl.indexOf(",") + 1)
+}
+
+function canvasToBlob(canvas, type, quality) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("canvas produced no image"))), type, quality)
+  })
 }
 
 export const screenshotFileName = (key, n) => `${slug(key)}-${FILE_PREFIX}-${n}.png`

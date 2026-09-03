@@ -1673,7 +1673,12 @@
       filter: (node) => !EXCLUDED.some((cls) => node.classList?.contains(cls))
     });
   }
-  const toPng = (canvas) => new Promise((resolve) => canvas.toBlob(resolve, PNG));
+  const toPng = (canvas) => canvasToBlob(canvas, PNG);
+  function canvasToBlob(canvas, type, quality) {
+    return new Promise((resolve, reject) => {
+      canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("canvas produced no image")), type, quality);
+    });
+  }
   const screenshotFileName = (key, n) => `${slug(key)}-${FILE_PREFIX}-${n}.png`;
   function download(doc, blob, name) {
     const view = doc.defaultView;
