@@ -40,9 +40,11 @@ module DaemonHarness
   end
 
   def stop_daemon
+    FileUtils.rm_rf(@home) if @home
+    return unless @daemon # spawn failed: let its own error stand
+
     Process.kill("TERM", @daemon)
     Process.wait(@daemon)
-    FileUtils.rm_rf(@home)
   end
 
   # Stands in for a sticky-notes MCP server: registers over the unix socket

@@ -54,7 +54,7 @@ module StickyNotes
       def request(method, path, body: nil)
         info = read_info or raise Unreachable, "no #{@info_path}"
 
-        HTTP.timeout(TIMEOUT)
+        HTTP.timeout(global: TIMEOUT)
             .auth("Bearer #{info["token"]}")
             .headers(content_type: "application/json")
             .request(method, "http://#{LOOPBACK}:#{info["port"]}#{path}", body:)
@@ -62,10 +62,14 @@ module StickyNotes
         raise Unreachable, e.message
       end
 
+      # daemon.json is written unguarded, so a restart can be read half-written:
+      # garbage there means no daemon, never an exception in a page render.
       def read_info
         return unless File.file?(@info_path)
 
         JSON.parse(File.read(@info_path))
+      rescue JSON::ParserError, SystemCallError
+        nil
       end
     end
   end

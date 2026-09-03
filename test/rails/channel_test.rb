@@ -54,6 +54,25 @@ class ChannelTest < Minitest::Test
     assert_equal({ "error" => "unknown session" }, JSON.parse(last_response.body))
   end
 
+  def test_notes_are_503_without_a_daemon
+    ENV["STICKY_NOTES_HOME"] = Dir.mktmpdir
+
+    post "/sticky-notes/notes", { session: "s1", url: "u", key: "k", title: "t", notes: [] }.to_json, JSON_TYPE
+
+    assert_equal 503, last_response.status
+  end
+
+  # daemon.json is written unguarded, so a restart can be caught half-written.
+  def test_a_corrupt_daemon_file_reads_as_no_daemon
+    ENV["STICKY_NOTES_HOME"] = Dir.mktmpdir
+    File.write(File.join(ENV["STICKY_NOTES_HOME"], "daemon.json"), "{")
+
+    get "/sticky-notes/sessions"
+
+    assert_equal 503, last_response.status
+    refute_includes PagesController.render(inline: "<%= sticky_notes_tag %>"), "data-channel"
+  end
+
   def test_tag_carries_the_channel_only_while_the_daemon_answers
     html = PagesController.render(inline: "<%= sticky_notes_tag %>")
     assert_includes html, 'data-channel="/sticky-notes"'
