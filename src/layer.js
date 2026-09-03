@@ -5,7 +5,8 @@ import css from "./style.css?inline"
 import { LAYER_SELECTOR } from "./path.js"
 import { MARKDOWN, JSON_FORMAT } from "./exporter.js"
 import { DEFAULT_BOX, placeNote, placeBadge, leaderEnds } from "./geometry.js"
-import { selectRect, captureRect, toPng, screenshotFileName, download, copyImage } from "./screenshot.js"
+import { selectRect, captureRect, toPng, toJpeg, screenshotFileName, download, copyImage } from "./screenshot.js"
+import { createPicker } from "./picker.js"
 
 const STYLE_ID = "sticky-notes-style"
 const SVG_NS = "http://www.w3.org/2000/svg"
@@ -27,6 +28,9 @@ const EXPORT_JSON_COMMAND = "export-json"
 const CLEAR_COMMAND = "clear"
 const COLLAPSE_COMMAND = "collapse"
 const REMOVE_COMMAND = "remove"
+const SEND_COMMAND = "send"
+const AUTO_SHOT_COMMAND = "auto-shot"
+const CONNECT_COMMAND = "connect"
 
 const TOGGLE_LABEL = "✎ Notes"
 const SCREENSHOT_LABEL = "▭ Screenshot"
@@ -43,13 +47,20 @@ const COLLAPSE_LABEL = "collapse"
 const REMOVE_LABEL = "remove note"
 const DRAG_HINT = "drag to move"
 const NOTE_PLACEHOLDER = "note…"
+const SEND_LABEL = "Send"
+const AUTO_SHOT_LABEL = "auto-shot"
+const CONNECT_LABEL = "Connect"
+const ATTACHED_MESSAGE = (n) => `attached to #${n}`
+const SHOTS_LABEL = (n) => (n ? `${n} shot${n === 1 ? "" : "s"}` : "")
+const SEND_ATTRIBUTE = "data-send"
+const CONNECT_ATTRIBUTE = "data-connect"
 
 const LEADER_COLOR = "#c9a227"
 const LEADER_WIDTH = 1.5
 const LEADER_DASH = "2 4"
 const ANCHOR_DOT_RADIUS = 2.5
 
-export function createLayer({ root, key, onPick, onChange, onRemove, onClear, onExport }) {
+export function createLayer({ root, key, storage, onPick, onChange, onRemove, onClear, onExport, onSend, onShot, onAutoShot, onConnect, onSessionsOpen }) {
   const doc = root.ownerDocument
   const view = doc.defaultView
   const live = new Map() // note id → { el, box, badge, observer }
@@ -68,6 +79,11 @@ export function createLayer({ root, key, onPick, onChange, onRemove, onClear, on
   let screenshotCount = 0
   let lastScreenshot = null // { blob, name } — Download saves it
   let downloadButton = null
+  let picker = null
+  let shotsEl = null
+  let autoShotInput = null
+  let lastFocusedId = null // the note a fresh screenshot belongs to
+  let channelOn = false // no channel → screenshots go to the clipboard, as before
 
   function mount() {
     injectStyle()
@@ -101,10 +117,20 @@ export function createLayer({ root, key, onPick, onChange, onRemove, onClear, on
       <span class="sticky-notes-bar__count">0</span>
       <button class="sticky-notes-bar__button" type="button" data-command="${SCREENSHOT_COMMAND}">${SCREENSHOT_LABEL}</button>
       <button class="sticky-notes-bar__button" type="button" data-command="${DOWNLOAD_COMMAND}" disabled>${DOWNLOAD_LABEL}</button>
+      <button class="sticky-notes-bar__button" type="button" data-command="${SEND_COMMAND}" ${SEND_ATTRIBUTE} hidden>${SEND_LABEL}</button>
+      <label class="sticky-notes-bar__auto" ${SEND_ATTRIBUTE} hidden><input type="checkbox" data-command="${AUTO_SHOT_COMMAND}"> ${AUTO_SHOT_LABEL}</label>
+      <span class="sticky-notes-bar__shots" ${SEND_ATTRIBUTE} hidden></span>
+      <button class="sticky-notes-bar__button" type="button" data-command="${CONNECT_COMMAND}" ${CONNECT_ATTRIBUTE}>${CONNECT_LABEL}</button>
       <button class="sticky-notes-bar__button" type="button" data-command="${EXPORT_MARKDOWN_COMMAND}">${MARKDOWN_LABEL}</button>
       <button class="sticky-notes-bar__button" type="button" data-command="${EXPORT_JSON_COMMAND}">${JSON_LABEL}</button>
       <button class="sticky-notes-bar__button" type="button" data-command="${CLEAR_COMMAND}">${CLEAR_LABEL}</button>
       <span class="sticky-notes-bar__message"></span>`
+    picker = createPicker({ doc, storage, key, onOpen: onSessionsOpen })
+    picker.el.setAttribute(SEND_ATTRIBUTE, "")
+    picker.el.hidden = true
+    bar.querySelector(`[data-command="${SEND_COMMAND}"]`).before(picker.el)
+    shotsEl = bar.querySelector(".sticky-notes-bar__shots")
+    autoShotInput = bar.querySelector(`[data-command="${AUTO_SHOT_COMMAND}"]`)
     toggleButton = bar.querySelector(`[data-command="${TOGGLE_COMMAND}"]`)
     downloadButton = bar.querySelector(`[data-command="${DOWNLOAD_COMMAND}"]`)
     countEl = bar.querySelector(".sticky-notes-bar__count")
@@ -136,6 +162,9 @@ export function createLayer({ root, key, onPick, onChange, onRemove, onClear, on
     if (command === EXPORT_MARKDOWN_COMMAND) onExport(MARKDOWN)
     if (command === EXPORT_JSON_COMMAND) onExport(JSON_FORMAT)
     if (command === CLEAR_COMMAND) onClear()
+    if (command === SEND_COMMAND) onSend()
+    if (command === AUTO_SHOT_COMMAND) onAutoShot(event.target.checked)
+    if (command === CONNECT_COMMAND) onConnect()
   }
 
   function listen() {
@@ -204,8 +233,14 @@ export function createLayer({ root, key, onPick, onChange, onRemove, onClear, on
       const blob = await toPng(canvas)
       lastScreenshot = { blob, name: screenshotFileName(key, ++screenshotCount) }
       downloadButton.disabled = false
-      const copied = await copyImage(view, blob)
-      message(copied ? COPIED_MESSAGE : NOT_COPIED_MESSAGE)
+
+      if (channelOn && lastFocusedId) {
+        onShot(lastFocusedId, await toJpeg(canvas))
+        message(ATTACHED_MESSAGE(indexOf(lastFocusedId)))
+      } else {
+        const copied = await copyImage(view, blob)
+        message(copied ? COPIED_MESSAGE : NOT_COPIED_MESSAGE)
+      }
 
       return blob
     } catch (error) {
@@ -293,8 +328,12 @@ export function createLayer({ root, key, onPick, onChange, onRemove, onClear, on
       note.note = event.target.value
       onChange()
     })
+    text.addEventListener("focus", () => (lastFocusedId = note.id))
 
-    box.querySelector(`[data-command="${REMOVE_COMMAND}"]`).addEventListener("click", () => onRemove(note))
+    box.querySelector(`[data-command="${REMOVE_COMMAND}"]`).addEventListener("click", () => {
+      if (lastFocusedId === note.id) lastFocusedId = null
+      onRemove(note)
+    })
     box.querySelector(`[data-command="${COLLAPSE_COMMAND}"]`).addEventListener("click", () => {
       note.collapsed = true
       onChange()
@@ -404,8 +443,23 @@ export function createLayer({ root, key, onPick, onChange, onRemove, onClear, on
   }
 
   function focusNote(id) {
+    lastFocusedId = id
     live.get(id)?.box.querySelector(".sticky-note__text")?.focus()
   }
+
+  // Send is useless without a daemon; Connect is the way to get one.
+  function setChannel(on) {
+    channelOn = on
+    for (const node of bar.querySelectorAll(`[${SEND_ATTRIBUTE}]`)) node.hidden = !on
+    for (const node of bar.querySelectorAll(`[${CONNECT_ATTRIBUTE}]`)) node.hidden = on
+  }
+
+  const indexOf = (id) => notes.findIndex((note) => note.id === id) + 1
+  const session = () => picker.value
+  const refreshSessions = (list) => picker.refresh(list)
+  const elementOf = (id) => live.get(id)?.el ?? null
+  const setShots = (count) => (shotsEl.textContent = SHOTS_LABEL(count))
+  const setAutoShot = (on) => (autoShotInput.checked = on)
 
   return {
     mount,
@@ -416,6 +470,12 @@ export function createLayer({ root, key, onPick, onChange, onRemove, onClear, on
     message,
     showExport,
     screenshot,
+    setChannel,
+    session,
+    refreshSessions,
+    elementOf,
+    setShots,
+    setAutoShot,
     get picking() {
       return picking
     },

@@ -39,3 +39,11 @@ function escapeIdentifier(value) {
 
 if (!globalThis.CSS) globalThis.CSS = {}
 if (typeof globalThis.CSS.escape !== "function") globalThis.CSS.escape = escapeIdentifier
+
+/* jsdom implements no ResizeObserver; layer.js observes every rendered note box
+   to persist manual resizes. Nothing in jsdom ever lays out, so a no-op class
+   is the honest stand-in — the callback could never fire anyway. */
+globalThis.ResizeObserver ??= class {
+  observe() {}
+  disconnect() {}
+}

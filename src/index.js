@@ -5,20 +5,44 @@ import { createStore } from "./store.js"
 import { toMarkdown, toJson, JSON_FORMAT } from "./exporter.js"
 import { createLayer } from "./layer.js"
 import { DEFAULT_BOX, initialOffset } from "./geometry.js"
+import { createChannel, detectChannel, saveToken, DIRECT_BASE } from "./channel.js"
+import { captureElement, toJpeg } from "./screenshot.js"
 
 const DEFAULT_ANCHORS = ["data-testid", "data-test"]
 const ID_RADIX = 36
 const COPIED_MESSAGE = "copied"
 const COPY_FAILED_MESSAGE = "select & copy"
+const PENDING_PREFIX = "sticky-notes:pending:"
+const AUTO_SHOT_KEY = "sticky-notes:auto-shot"
+const AUTO_SHOT_OFF = "0"
+const AUTO_SHOT_PADDING = 16 // px around the noted element
+const SENT_MESSAGE = "sent"
+const QUEUED_MESSAGE = "queued for the next review session"
+const PICK_SESSION_MESSAGE = "pick a session first"
+const NO_DAEMON_MESSAGE = "no daemon"
+const SEND_FAILED_MESSAGE = "send failed"
+const LOST_MESSAGE = (n) => `${n} screenshots lost`
+const TOKEN_PROMPT = "sticky-notes daemon token (from ~/.cache/sticky-notes/daemon.json)"
 
 export function createStickyNotes(options = {}) {
   const key = options.key ?? location.pathname
   const anchors = options.anchors ?? DEFAULT_ANCHORS
-  const store = createStore(options.storage ?? localStorage, key)
+  const storage = options.storage ?? localStorage
+  const store = createStore(storage, key)
+  const fetchFn = options.fetch ?? globalThis.fetch?.bind(globalThis)
+  const pending = new Map() // note id → [jpeg base64], until sent
 
   let notes = []
   let layer = null
   let root = null
+  let channel = resolveChannel(options.channel)
+  let autoShot = readAutoShot()
+
+  function resolveChannel(given) {
+    if (given && typeof given === "object") return given
+
+    return detectChannel({ base: given, storage, fetch: fetchFn })
+  }
 
   const save = () => store.save(notes)
 
@@ -29,8 +53,16 @@ export function createStickyNotes(options = {}) {
 
     root = options.root ?? document.body
     notes = store.load()
-    layer = createLayer({ root, key, onPick, onChange: save, onRemove, onClear: clear, onExport: exportNotes })
+    layer = createLayer({
+      root, key, storage,
+      onPick, onChange: save, onRemove, onClear: clear, onExport: exportNotes,
+      onSend: send, onShot: attachScreenshot, onAutoShot: setAutoShot, onConnect: () => connect(), onSessionsOpen: refreshSessions,
+    })
     layer.mount()
+    layer.setChannel(!!channel)
+    layer.setAutoShot(autoShot)
+    reportLost()
+    refreshSessions()
     rerender()
 
     return instance
@@ -121,6 +153,117 @@ export function createStickyNotes(options = {}) {
   // rect = { x, y, w, h } in page px; omit it for the interactive marquee. → Blob | null
   const screenshot = (rect) => layer?.screenshot(rect) ?? Promise.resolve(null)
 
+  // Screenshots live in memory only; a reload drops them, so say how many went.
+  function reportLost() {
+    const lost = Number(read(PENDING_PREFIX + key)) || 0
+    write(PENDING_PREFIX + key, "0")
+    if (lost) layer.message(LOST_MESSAGE(lost))
+  }
+
+  async function refreshSessions() {
+    if (!channel) return
+
+    try {
+      const sessions = await channel.sessions()
+      layer?.refreshSessions(sessions) // the host may have unmounted us meanwhile
+    } catch (error) {
+      layer?.message(`${NO_DAEMON_MESSAGE}: ${error.message}`)
+      throw error
+    }
+  }
+
+  function attachScreenshot(id, jpeg) {
+    if (!channel || !id) return
+
+    pending.set(id, [...(pending.get(id) ?? []), jpeg])
+    countPending()
+  }
+
+  function countPending() {
+    const count = [...pending.values()].reduce((sum, shots) => sum + shots.length, 0)
+    write(PENDING_PREFIX + key, String(count))
+    layer?.setShots(count)
+  }
+
+  async function send() {
+    if (!channel) return null
+
+    const session = layer.session()
+    if (!session) {
+      layer.message(PICK_SESSION_MESSAGE)
+      return null
+    }
+
+    const doc = (root ?? document.body).ownerDocument
+    const rows = notes.map((note, index) => ({ ...toRow(note, index), shots: pending.get(note.id) ?? [] }))
+    if (autoShot) await autoShots(doc, rows)
+
+    const payload = { session, url: doc.defaultView.location.href, key, title: doc.title, notes: rows }
+
+    try {
+      const result = await channel.send(payload)
+      pending.clear()
+      countPending()
+      layer?.message(result.queued ? QUEUED_MESSAGE : SENT_MESSAGE)
+
+      return result
+    } catch (error) {
+      layer?.message(`${SEND_FAILED_MESSAGE}: ${error.message}`)
+      throw error
+    }
+  }
+
+  // Every noted element without a manual screenshot gets one, so Claude sees
+  // what the note points at.
+  async function autoShots(doc, rows) {
+    for (const [index, note] of notes.entries()) {
+      if (rows[index].shots.length) continue
+
+      const el = layer.elementOf(note.id)
+      if (!el) continue
+
+      rows[index].shots = [await toJpeg(await captureElement(doc, el, AUTO_SHOT_PADDING))]
+    }
+  }
+
+  function setAutoShot(on) {
+    autoShot = on
+    write(AUTO_SHOT_KEY, on ? "" : AUTO_SHOT_OFF)
+    layer?.setAutoShot(on)
+  }
+
+  // function declaration on purpose: `let autoShot = readAutoShot()` runs before this line
+  function readAutoShot() {
+    return read(AUTO_SHOT_KEY) !== AUTO_SHOT_OFF
+  }
+
+  function connect(token = promptToken()) {
+    if (!token) return
+
+    saveToken(storage, token)
+    channel = createChannel({ base: DIRECT_BASE, token, fetch: fetchFn })
+    layer?.setChannel(true)
+    refreshSessions()
+  }
+
+  const promptToken = () => (root ?? document.body).ownerDocument.defaultView.prompt?.(TOKEN_PROMPT)
+
+  function read(name) {
+    try {
+      return storage.getItem(name)
+    } catch {
+      return null
+    }
+  }
+
+  function write(name, value) {
+    try {
+      storage.setItem(name, value)
+    } catch {
+      // private mode: state lasts for this page view
+    }
+  }
+
   const instance = {
     mount,
     unmount,
@@ -129,8 +272,15 @@ export function createStickyNotes(options = {}) {
     screenshot,
     export: exportNotes,
     clear,
+    send,
+    attachScreenshot,
+    setAutoShot,
+    connect,
     get notes() {
       return notes.slice()
+    },
+    get channel() {
+      return channel
     },
   }
 

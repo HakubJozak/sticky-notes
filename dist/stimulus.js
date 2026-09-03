@@ -7,6 +7,7 @@ class stimulus extends Controller {
   connect() {
     this.notes = createStickyNotes({
       key: this.hasKeyValue ? this.keyValue : void 0,
+      channel: this.hasChannelValue ? this.channelValue : void 0,
       root: this.element
     });
     this.notes.mount();
@@ -24,7 +25,7 @@ class stimulus extends Controller {
     this.notes = null;
   }
 }
-__publicField(stimulus, "values", { key: String });
+__publicField(stimulus, "values", { key: String, channel: String });
 export {
   stimulus as default
 };

@@ -19,7 +19,7 @@ function listen() {
 const anchorsOf = (el) => el.dataset.anchors?.split(/\s+/).filter(Boolean);
 function remount() {
   const el = document.querySelector(selector);
-  notes = el ? mount({ root: el, key: el.dataset.key || void 0, anchors: anchorsOf(el) }) : null;
+  notes = el ? mount({ root: el, key: el.dataset.key || void 0, anchors: anchorsOf(el), channel: el.dataset.channel }) : null;
   return notes;
 }
 export {

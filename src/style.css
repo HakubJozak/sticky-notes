@@ -54,6 +54,11 @@
   opacity: 0.6;
 }
 
+/* `all: unset` on the bar controls beats the UA [hidden] rule — restore it */
+.sticky-notes-bar [hidden] {
+  display: none !important;
+}
+
 body.sticky-notes-picking,
 body.sticky-notes-picking * {
   cursor: crosshair !important;
@@ -230,4 +235,33 @@ body.sticky-notes-picking * {
 
 .sticky-notes-screenshot__rect[hidden] {
   display: none !important;
+}
+
+.sticky-notes-bar__picker {
+  all: unset;
+  border: 1px solid var(--line, #c8ccd4);
+  padding: 5px 6px;
+  font: inherit;
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.sticky-notes-bar__auto {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.sticky-notes-bar__auto input {
+  margin: 0;
+}
+
+.sticky-notes-bar__shots {
+  opacity: 0.7;
+  white-space: nowrap;
 }
