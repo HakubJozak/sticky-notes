@@ -1,6 +1,6 @@
 <%# Notes are positioned in document coordinates — keep this a direct child of
     <body>, outside any positioned ancestor, or every note lands offset. %>
-<%= tag.div(data: { sticky_notes: true, key:, anchors: anchors&.join(" ") }) %>
+<%= tag.div(data: { sticky_notes: true, key:, anchors: anchors&.join(" "), channel: }) %>
 <script type="module">
   import { attach } from "<%= sticky_notes.script_path(name: "turbo.js") %>"
   attach()

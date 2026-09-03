@@ -14,5 +14,6 @@ Gem::Specification.new do |spec|
   spec.files = Dir["lib/**/*", "app/**/*", "config/**/*", "dist/*.js", "skill/**/*", "README.md", "LICENSE"]
   spec.require_paths = ["lib"]
 
+  spec.add_dependency "http", ">= 5"
   spec.add_dependency "railties", ">= 7.0"
 end
