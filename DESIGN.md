@@ -21,6 +21,8 @@ nearest heading · comment. Reviewer's notes persist in localStorage.
   and injected once at mount as `<style id="sticky-notes-style">`. One
   behaviour everywhere; no separate stylesheet to wire.
 - `dist/` is committed (importmap and gem consumers pull prebuilt files).
+- `files`: `dist`, `src`, `server`; `bin.sticky-notes-daemon` → `server/daemon.js`
+  (the daemon is plain node, it needs no build).
 
 ## Public API (`src/index.js`)
 
@@ -34,6 +36,10 @@ options = {
   root: document.body,      // where bar/notes/leaders are appended
   storage: localStorage,    // anything with getItem/setItem/removeItem
   anchors: ["data-testid", "data-test"],   // attributes that count as strong anchors
+  channel: undefined,       // base URL of the channel ("/sticky-notes" under the engine) or an
+                            // object { sessions(), send(payload) }; unset = the direct daemon
+                            // when a token is stored, else no channel and no Send
+  fetch: globalThis.fetch,  // injected in tests
 }
 
 instance = {
@@ -42,12 +48,24 @@ instance = {
   export(format)                   // "markdown" | "json" → string (also copies + shows pane)
   screenshot(rect?)                // { x, y, w, h } page px → Promise<Blob>; no rect = drag a marquee
   clear(),
+  send()                           // notes + pending shots → the picked session; { delivered } | { queued } | null
+  attachScreenshot(id, jpeg)       // base64 JPEG waits with note `id` until the next send()
+  setAutoShot(on)                  // capture every noted element on send (default on)
+  connect(token?)                  // direct daemon path; no token = prompt(), then stored
   get notes()                      // readonly array of note records
+  get channel()                    // the channel object, or null
 }
 ```
 
-Storage key `sticky-notes:<key>`. On first read, migrate from legacy
-`kz-notes:<key>` (read, write under the new key, remove the old).
+| storage key | holds |
+|---|---|
+| `sticky-notes:<key>` | the notes; on first read migrated from legacy `kz-notes:<key>` (read, write under the new key, remove the old) |
+| `sticky-notes:session:<key>` | the session id picked for this page |
+| `sticky-notes:pending:<key>` | count of attached but unsent screenshots, so the next mount can say "N screenshots lost" |
+| `sticky-notes:auto-shot` | global; `"0"` = off, anything else on |
+| `sticky-notes:daemon-token` | global; the token pasted into **Connect** for the direct path |
+
+Every read and write is wrapped — private mode must cost the page view, not the layer.
 
 Note record: `{ id, path, anchored, text, ctx, note, created, dx, dy, w, h, collapsed?, orphan? }`.
 
@@ -61,7 +79,10 @@ Note record: `{ id, path, anchored, text, ctx, note, created, dx, dy, w, h, coll
 | `exporter.js` | `toMarkdown(rows, { title, url })`, `toJson(...)`; every continuation line indented to the bullet width |
 | `layer.js` | DOM: bar, export pane, leaders SVG, note boxes, badges; drag/resize; picking mode listeners (AbortController) |
 | `geometry.js` | `anchorOf`, `initialOffset`, `placeNote`, `placeBadge`, leader endpoints |
-| `screenshot.js` | `selectRect(doc)` marquee → page rect; `captureRect(doc, rect)` DOM re-render via modern-screenshot (document shifted by `translate(-x,-y)`, clipped to w×h); `download`, `copyImage` |
+| `screenshot.js` | `selectRect(doc)` marquee → page rect; `captureRect(doc, rect)` → canvas, DOM re-render via modern-screenshot (document shifted by `translate(-x,-y)`, clipped to w×h); `captureElement(doc, el, padding)` via `paddedRect`; `toPng` / `toJpeg` (`jpegSize` downscales to `JPEG_MAX_EDGE` 1568 px at `JPEG_QUALITY` 0.85 — token cost follows pixel area); `download`, `copyImage` |
+| `channel.js` | `createChannel({ base, token, fetch })` → `{ sessions(), send(payload) }`, `ChannelError(status)`; `detectChannel` picks the engine base, else a stored token + `DIRECT_BASE` (`http://127.0.0.1:47391`), else null; `readToken` / `saveToken` |
+| `picker.js` | the session `<select>`: one live session picks itself, otherwise the remembered id, otherwise "pick a session…"; `queue` is always offered and never automatic |
+| `slug.js` | `slug(key)` — file-name-safe page key, shared with the daemon so both name shots alike |
 | `stimulus.js` | `export default class StickyNotesController extends Controller` (see below) |
 | `turbo.js` | `attach(selector)` — mount into `[data-sticky-notes]`, re-mount on `turbo:load`, unmount on `turbo:before-cache`; listeners registered once per page |
 | `style.css` | all styles, classes below |
@@ -70,11 +91,31 @@ Keep functions small, early returns, a one-line *why* comment where the
 reason is not obvious. No `kz`, no `KZ`, no `T()` lookup tables — plain
 string constants.
 
+## Modules (`server/`)
+
+Plain node, no build, no npm deps. State lives under `~/.cache/sticky-notes/`
+(`STICKY_NOTES_HOME` overrides): `daemon.json` (mode 0600), `daemon.sock`,
+`daemon.log`, `shots/<session>/<key-slug>-<n>.jpg`.
+
+| file | owns |
+|---|---|
+| `daemon.js` | one per machine. `start()` binds `daemon.sock` and `127.0.0.1:47391` (`STICKY_NOTES_PORT`), writes `daemon.json`; a second daemon that finds a live socket exits 0, a stale socket file is unlinked. `node server/daemon.js stop` POSTs `/stop` |
+| `mcp.js` | one per review session, spawned by Claude Code over stdio (`mcp.json`). Registers `{ cwd, pid, label, claudeSession }` and forwards every daemon event to the channel. Holds no state |
+| `channel.js` | the MCP half: hand-rolled JSON-RPC over stdio, `claude/channel` capability, `notifications/claude/channel`. Buffers events until `READY_DELAY_MS` (3 s) after `notifications/initialized` — Claude Code drops what arrives before that |
+| `daemon-client.js` | the socket to the daemon: spawns it detached when the socket file is missing, retries every 2 s on close, respawns on `ECONNREFUSED` (only a fresh daemon can replace a stale socket file) |
+| `http.js` | the loopback API: `GET /sessions`, `POST /notes`, `POST /stop`, all behind `Authorization: Bearer <token>`; CORS `*` because the token is the gate; 16 MB body cap |
+| `socket.js` | the unix-socket server: one connection is one session, its first line registers it, its close ends it |
+| `sessions.js` | the live table (id → `cwd`, `pid`, `label`, `claudeSession`, socket) plus the `queue` buffer, drained by the next session that registers |
+| `shots.js` | writes `shots/<session>/<key-slug>-<n>.jpg`; 2 MB cap (413) and JPEG magic bytes (415). The page never names a file |
+| `event.js` | `POST /notes` body → `{ content, meta: { url, key, count } }`; `content` is the same Markdown as Copy Markdown, with a `screenshot: <path>` line per stored shot |
+| `paths.js` | every path above, `STICKY_NOTES_HOME` / `STICKY_NOTES_PORT`, `DEFAULT_PORT = 47391` |
+| `ndjson.js` | newline-delimited JSON framing; one bad line never kills a connection |
+
 ## CSS classes (BEM, namespace `sticky-notes`)
 
 | element | class |
 |---|---|
-| bar (fixed, bottom-right) | `.sticky-notes-bar`, buttons `.sticky-notes-bar__button` (`[aria-pressed=true]` while picking), `.sticky-notes-bar__count`, `.sticky-notes-bar__message` |
+| bar (fixed, bottom-right) | `.sticky-notes-bar`, buttons `.sticky-notes-bar__button` (`[aria-pressed=true]` while picking), `.sticky-notes-bar__count`, `.sticky-notes-bar__message`, `.sticky-notes-bar__picker` (session `<select>`), `.sticky-notes-bar__auto` (auto-shot checkbox label), `.sticky-notes-bar__shots` (unsent shot count) |
 | export pane | `.sticky-notes-export` |
 | leaders svg | `.sticky-notes-leaders` |
 | note | `.sticky-note`, `.sticky-note--dragging`, `.sticky-note__header`, `.sticky-note__index`, `.sticky-note__path`, `.sticky-note__button` (`data-command="collapse"` / `"remove"`), `.sticky-note__text` (textarea) |
@@ -82,7 +123,10 @@ string constants.
 | host states | `body.sticky-notes-picking` (crosshair), `.sticky-notes-hover` (dashed outline), `.sticky-notes-anchor` (solid outline on noted element) |
 | screenshot marquee | `.sticky-notes-screenshot` (fixed full-viewport overlay), `.sticky-notes-screenshot__rect` (dims outside via box-shadow) |
 
-Bar buttons carry `data-command="toggle" | "screenshot" | "download" | "export-markdown" | "export-json" | "clear"`.
+Bar buttons carry `data-command="toggle" | "screenshot" | "download" | "send" | "auto-shot" | "connect" | "export-markdown" | "export-json" | "clear"`.
+The channel controls (Send, picker, auto-shot, shots) carry `data-send` and
+Connect carries `data-connect`; `setChannel(on)` shows one set and hides the
+other, so a page without a daemon shows neither Send nor a picker.
 Screenshot copies the image to the clipboard when the browser allows it and
 enables Download, which saves the last capture as `<key-slug>-screenshot-<n>.png`.
 Bar, export pane and overlay are filtered out of the render; notes and badges
@@ -99,7 +143,7 @@ import { Controller } from "@hotwired/stimulus"
 import { createStickyNotes } from "./index.js"
 
 export default class extends Controller {
-  static values = { key: String }
+  static values = { key: String, channel: String }
   connect()    { mount into this.element with key; listen turbo:frame-render + turbo:morph → refresh; turbo:before-cache → unmount }
   disconnect() { remove listeners; unmount }
 }
@@ -116,7 +160,9 @@ import { attach } from "@hakubjozak/sticky-notes/turbo"
 attach()                       // default selector "[data-sticky-notes]"
 ```
 
-Mounts the singleton into the element with `key: el.dataset.key`. Turbo
+Mounts the singleton into the element with `key: el.dataset.key` and
+`channel: el.dataset.channel` (the engine renders `data-channel` only while a
+daemon answers). Turbo
 re-evaluates inline body module scripts on every visit, so `attach()` runs many
 times per page: a module-level flag registers the listeners once, and every call
 just re-mounts (the host element is a new node after each visit). Without Turbo
@@ -135,8 +181,20 @@ as: "sticky_notes" }` when enabled, so a host edits nothing but its layout.
 - `StickyNotes::AssetsController` (< `ActionController::Base`, CSRF skipped)
   serves `dist/*.js` from the gem with `fresh_when`; route named `script`
   (never `asset` — `asset_path` is an ActionView helper).
-- `sticky_notes_tag(key: nil)` → the `[data-sticky-notes]` div plus an inline
-  `<script type="module">` calling `attach()`. Not `data-turbo-temporary`.
+- `sticky_notes_tag(key: nil, anchors: nil)` → the `[data-sticky-notes]` div plus
+  an inline `<script type="module">` calling `attach()`. Not `data-turbo-temporary`.
+  Adds `data-channel="/sticky-notes"` only while the daemon answers, so a page
+  loaded without one shows no Send.
+- `StickyNotes::Rails::Daemon` — http.rb (gem dep `http >= 5`), 2 s global
+  timeout so a wedged daemon cannot stall a page render, `Unreachable` for
+  every transport error. `sessions(root:)` orders the daemon's list for this
+  `Rails.root`: exact cwd, then ancestors closest first, then the rest. A
+  half-written `daemon.json` reads as "no daemon", never as an exception.
+- `StickyNotes::ChannelController` (< `ActionController::Base`, CSRF skipped) —
+  `GET /sticky-notes/sessions` returns the ordered list, `POST
+  /sticky-notes/notes` forwards the raw body and returns the daemon's status and
+  JSON unchanged (401/404/413/415 pass through). Both answer 503 when the daemon
+  is unreachable. Routed only when `StickyNotes::Rails.enabled?`.
 
 ## Scripts (`scripts/`, node, no deps)
 
@@ -147,5 +205,6 @@ as: "sticky_notes" }` when enabled, so a host edits nothing but its layout.
 
 - `vite` lib build producing the four dist files (two configs: an ESM pass with a `build.lib.entry` map, plus an iife pass).
 - `eslint` flat config (`@eslint/js` recommended + browser globals), `npm run lint` clean.
-- `vitest` + `jsdom`: unit tests for `path.js`, `store.js` (incl. migration), `exporter.js` (multi-line indent, unanchored/orphan flags).
+- `vitest` + `jsdom`: unit tests for `src/` and `server/` (`npm test`). jsdom has no canvas, so JPEG conversion and auto-shot are covered by browser checks, not units.
+- Ruby: `bundle exec ruby -Itest test/rails/channel_test.rb` (Gemfile at the repo root, lock not committed).
 - `npm test`, `npm run build`, `npm run lint` all green.

@@ -240,6 +240,32 @@ the `skill/` directory into your skills folder (Claude Code:
 plain instruction document. The skill ships inside both the npm package and
 the gem, so a project that depends on either has it at hand.
 
+## Live delivery to Claude Code
+
+**Send** pushes the notes and screenshots into a live Claude Code session.
+
+```sh
+ln -sf ~/projects/sticky-notes/contrib/claude-review.fish ~/.config/fish/functions/
+claude-review                                        # a session that receives notes
+node ~/projects/sticky-notes/server/daemon.js stop   # the daemon outlives the sessions
+```
+
+`claude-review` is `claude` plus the two flags that arm the channel; a session
+started with plain `claude` never shows up in the picker. Upgrade a running one
+with `claude-review --resume <id>` (id printed at exit), not `--continue`. The
+daemon (one per machine) is spawned by the first session that needs it.
+
+Bar controls, once a channel answers: **Send** (→ the picked session, or
+`queue` for the next one), the **session picker** (live sessions, this app's
+first), **auto-shot** (a JPEG of every noted element rides along; on by
+default) and a count of manually attached ▭ Screenshots.
+
+Rails hosts proxy through the app — remote browsing works, the token stays on
+the machine. On a `file://` or static page, **Connect** takes the token from
+`~/.cache/sticky-notes/daemon.json` and posts to the daemon directly.
+
+Design and protocol: [`docs/live-delivery.html`](docs/live-delivery.html).
+
 ## Dev
 
 ```sh

@@ -1,6 +1,6 @@
 {
   "name": "@hakubjozak/sticky-notes",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "In-place review layer for any web page — pin notes to elements, export CSS path · text · comment.",
   "type": "module",
   "license": "MIT",

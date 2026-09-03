@@ -66,7 +66,7 @@
     <tr><td><b>overlay</b></td><td>the sticky-notes layer in the page: notes, screenshots, the Send button and the session picker</td><td>browser tab</td><td>page</td></tr>
     <tr><td><b>Rails engine</b></td><td><code>sticky-notes-rails</code>: renders the overlay, lists sessions, proxies Send to the daemon</td><td>Rails dev server of the app under review</td><td>app</td></tr>
     <tr><td><b>sticky-notes daemon</b></td><td>one per machine. Accepts Send on a loopback port, keeps the table of live review sessions, stores screenshots, buffers notes that have no target</td><td>node, detached</td><td>from first review session until reboot or kill</td></tr>
-    <tr><td><b>sticky-notes MCP server</b></td><td>one per review session. A stdio MCP server spawned by Claude Code, declaring the <code>claude/channel</code> capability. Connects to the daemon and turns every event for its session into a <code>notifications/claude/channel</code> message. Holds no state of its own</td><td>node, child of Claude Code</td><td>the session</td></tr>
+    <tr><td><b>sticky-notes MCP server</b></td><td>one per review session. A stdio MCP server spawned by Claude Code, declaring the <code>claude/channel</code> capability. Connects to the daemon and turns every event for its session into a <code>notifications/claude/channel</code> message. Holds no state of its own; it arms the channel 3 s after the handshake and buffers until then, because Claude Code drops a notification pushed in the first moments after <code>initialize</code></td><td>node, child of Claude Code</td><td>the session</td></tr>
     <tr><td><b>Claude Code</b></td><td>the session under review. Receives channel events as <code>&lt;channel source="sticky-notes"&gt;</code> tags and acts on them like a message from the user</td><td>terminal</td><td>—</td></tr>
     <tr><td><b>caddy</b></td><td>existing <code>*.oak.hozak.dev</code> reverse proxy; unchanged</td><td>dev machine</td><td>—</td></tr>
   </table>
@@ -141,7 +141,7 @@ claude-review --resume &lt;id&gt;   # the session you just left (id printed at e
   <ul>
     <li><b>Why at launch.</b> Claude Code registers channel listeners when it starts and says so in its banner. Nothing can arm a running session; a <code>/sticky-notes</code> skill can only print the command above.</li>
     <li><b>Upgrading a running session.</b> Leave it, then <code>claude-review --resume &lt;id&gt;</code> with the id printed at exit. Conversation and context survive, only the process restarts.</li>
-    <li><b>Daemon lifecycle.</b> The first MCP server that finds no <code>daemon.sock</code> spawns the daemon detached (own session id, stdio to a log file) and then connects. The daemon keeps running after every session is gone; it is idle and small. <code>sticky-notes-daemon stop</code> ends it.</li>
+    <li><b>Daemon lifecycle.</b> The first MCP server that finds no <code>daemon.sock</code> spawns the daemon detached (own session id, stdio to a log file) and then connects. The daemon keeps running after every session is gone; it is idle and small. <code>node server/daemon.js stop</code> ends it.</li>
     <li><b>After the research preview.</b> The flag becomes <code>--channels server:sticky-notes</code>, still per launch by design, so the function stays.</li>
     <li><b>Cost.</b> One idle node process per review session plus one daemon per machine, and the warning dialog once per launch during the preview.</li>
   </ul>
@@ -320,9 +320,9 @@ claude-review --resume &lt;id&gt;   # the session you just left (id printed at e
   <div class="scroll">
   <table>
     <tr><th>direction</th><th>message</th><th>when</th></tr>
-    <tr><td>MCP server → daemon</td><td><code>{ type: "register", cwd, pid, label }</code></td><td>on connect and on every reconnect</td></tr>
+    <tr><td>MCP server → daemon</td><td><code>{ type: "register", cwd, pid, label, claudeSession }</code></td><td>on connect and on every reconnect</td></tr>
     <tr><td>daemon → MCP server</td><td><code>{ type: "event", content, meta }</code></td><td>per Send; the MCP server forwards it verbatim as <code>notifications/claude/channel</code></td></tr>
-    <tr><td>both</td><td>socket close</td><td>session gone / daemon gone; the MCP server retries every 2 s in the background, respawning the daemon if the socket file is missing</td></tr>
+    <tr><td>both</td><td>socket close</td><td>session gone / daemon gone; the MCP server retries every 2 s in the background, respawning the daemon when the socket file is missing or the connection is refused</td></tr>
   </table>
   </div>
   <h3>Rails engine</h3>
@@ -335,10 +335,14 @@ claude-review --resume &lt;id&gt;   # the session you just left (id printed at e
   <pre><code>&lt;channel source="sticky-notes" url="https://krouzitko.oak.hozak.dev/kids/12" key="/kids/12" count="2"&gt;
 # Notes on Kid 12
 
-1. `#kid-form [name="kid[name]"]` · "Name" · under: Details
+1. `#kid-form [name="kid[name]"]`
+   &gt; Name
+   under: Details
    Label is cut off at 1280px
    screenshot: /home/dev/.cache/sticky-notes/shots/s2/kids-12-1.jpg
-2. `#kid-form button[type=submit]` · "Save" · under: Details
+2. `#kid-form button[type=submit]`
+   &gt; Save
+   under: Details
    Should be disabled until the form is dirty
 &lt;/channel&gt;</code></pre>
   <p>The body is the Markdown the overlay exports today plus a screenshot line where one was attached. The MCP server's <code>instructions</code> tell Claude that events are review notes for the page in <code>url</code>, to Read referenced screenshots before acting, and that no reply is expected.</p>
@@ -349,7 +353,7 @@ claude-review --resume &lt;id&gt;   # the session you just left (id printed at e
     <tr><th>condition</th><th>where it is caught</th><th>what you see</th><th>what happens</th></tr>
     <tr><td>no review session live</td><td>daemon: empty session table</td><td>picker offers only "queue for next review session"</td><td>notes wait in the daemon; or Copy Markdown</td></tr>
     <tr><td>daemon not running</td><td>Rails: connection refused</td><td>Send disabled, "no daemon"</td><td>the next <code>claude-review</code> spawns it; Copy Markdown meanwhile</td></tr>
-    <tr><td>daemon crashed with sessions live</td><td>MCP servers: socket closed</td><td>nothing until the next Send: "no daemon"</td><td>the first MCP server to retry respawns it, all reconnect and re-register; the in-memory queue is lost</td></tr>
+    <tr><td>daemon crashed with sessions live</td><td>MCP servers: socket closed</td><td>nothing until the next Send: "no daemon"</td><td>the first MCP server to retry respawns it — on a missing socket file and on <code>ECONNREFUSED</code>, which is how a stale socket file is replaced — all reconnect and re-register; the in-memory queue is lost</td></tr>
     <tr><td>session ended or crashed</td><td>daemon: socket closed</td><td>row disappears from the picker</td><td>—</td></tr>
     <tr><td>launched with the config but without the channel flag</td><td>cannot happen through the function; by hand Claude Code drops events silently</td><td>"sent", nothing happens</td><td>keep both flags in one function</td></tr>
     <tr><td>Claude Code busy in a turn</td><td>Claude Code queues the notification</td><td>"sent", Claude reacts next turn</td><td>—</td></tr>
@@ -368,8 +372,8 @@ claude-review --resume &lt;id&gt;   # the session you just left (id printed at e
 
   <h2 id="verify">To verify in the first spike</h2>
   <ol>
-    <li>Which cwd Claude Code gives a stdio server from <code>--mcp-config</code>. Needed for picker ordering only.</li>
-    <li>Whether the MCP server's environment carries a session id or name for the picker label. Hooks receive one; MCP servers may not.</li>
+    <li>Verified: a stdio server from <code>--mcp-config</code> runs in Claude Code's own cwd. Needed for picker ordering only.</li>
+    <li>Verified: the environment carries <code>CLAUDE_CODE_SESSION_ID</code> and no name, so the picker labels a row by the cwd's basename.</li>
     <li>That servers spawn at launch, not on first tool use. Channels need the process running before the first Send.</li>
     <li>Verified: <code>--resume &lt;id&gt;</code> with the extra flags restores the conversation and spawns the MCP server. <code>--continue</code> picks the latest conversation in the cwd, which from <code>~</code> is usually another session.</li>
     <li>That a daemon spawned detached outlives the MCP server and Claude Code.</li>
