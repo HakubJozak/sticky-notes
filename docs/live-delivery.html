@@ -1,0 +1,395 @@
+<title>Sticky Notes Live Delivery</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+  :root {
+    --bg: #f6f4ee; --card: #fffdf7; --ink: #1e2430; --muted: #6b6a62; --line: #c8c4b8;
+    --accent: #e0b400; --accent-ink: #6b5a12; --accent-bg: #fff3b0;
+    --bad: #b3261e; --ok: #2e7d4f; --code-bg: #ece8dc;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #17191f; --card: #1f222a; --ink: #e8e6df; --muted: #9a988f; --line: #3a3d47;
+      --accent: #e0b400; --accent-ink: #f1d35e; --accent-bg: #3a3210;
+      --bad: #ff7b6e; --ok: #6fc48f; --code-bg: #2a2d36;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #17191f; --card: #1f222a; --ink: #e8e6df; --muted: #9a988f; --line: #3a3d47;
+    --accent: #e0b400; --accent-ink: #f1d35e; --accent-bg: #3a3210;
+    --bad: #ff7b6e; --ok: #6fc48f; --code-bg: #2a2d36;
+  }
+  body { background: var(--bg); color: var(--ink); font: 15px/1.55 "IBM Plex Sans", system-ui, sans-serif; margin: 0; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 32px 20px 80px; }
+  h1 { font-size: 26px; margin: 0 0 6px; text-wrap: balance; }
+  h2 { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 44px 0 10px; }
+  h3 { font-size: 15px; margin: 18px 0 6px; }
+  p { margin: 0 0 10px; max-width: 74ch; }
+  .lede { color: var(--muted); max-width: 74ch; }
+  code { font: 12.5px "IBM Plex Mono", ui-monospace, monospace; background: var(--code-bg); padding: 1px 5px; border-radius: 3px; }
+  pre { font: 12.5px/1.5 "IBM Plex Mono", ui-monospace, monospace; background: var(--code-bg); padding: 12px 14px; overflow-x: auto; border-radius: 4px; }
+  pre code { background: none; padding: 0; }
+  figure { margin: 0; background: var(--card); border: 1px solid var(--line); padding: 16px 18px 12px; }
+  figure + figure { margin-top: 14px; }
+  figure svg { display: block; width: 100%; height: auto; color: var(--ink); font-family: "IBM Plex Sans", system-ui, sans-serif; }
+  figcaption { font-size: 13.5px; color: var(--muted); margin-top: 8px; max-width: 84ch; }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+  .scroll { overflow-x: auto; }
+  ul, ol { margin: 0 0 10px; padding-left: 20px; max-width: 80ch; } li { margin: 3px 0; }
+  .svg-accent { color: var(--accent); }
+  .toc { font-size: 13.5px; columns: 2; column-gap: 30px; max-width: 70ch; }
+  .toc a { color: inherit; }
+</style>
+
+<div class="wrap">
+  <h1>Sticky notes → live delivery to Claude Code</h1>
+  <p class="lede">How review notes pinned in the browser reach the running Claude Code session without copy and paste. Components, lifecycles, the Send flow, session selection, screenshots, what each kind of page can do, failure modes, and the reasons behind the shape. Scope of v1: Rails apps (local or remote) and local HTML files; published artifacts keep Copy Markdown.</p>
+  <ol class="toc">
+    <li><a href="#components">Components</a></li>
+    <li><a href="#topology">Topology and who initiates</a></li>
+    <li><a href="#review-session">Starting a review session</a></li>
+    <li><a href="#send">The Send flow</a></li>
+    <li><a href="#picker">Choosing the session</a></li>
+    <li><a href="#screenshots">Screenshots</a></li>
+    <li><a href="#pages">What each kind of page can do</a></li>
+    <li><a href="#interfaces">Interfaces and files</a></li>
+    <li><a href="#failures">Failure modes</a></li>
+    <li><a href="#verify">To verify in the first spike</a></li>
+    <li><a href="#design-notes">Design notes</a></li>
+  </ol>
+
+  <h2 id="components">Components</h2>
+  <div class="scroll">
+  <table>
+    <tr><th>name</th><th>what it is</th><th>runs</th><th>lifetime</th></tr>
+    <tr><td><b>overlay</b></td><td>the sticky-notes layer in the page: notes, screenshots, the Send button and the session picker</td><td>browser tab</td><td>page</td></tr>
+    <tr><td><b>Rails engine</b></td><td><code>sticky-notes-rails</code>: renders the overlay, lists sessions, proxies Send to the daemon</td><td>Rails dev server of the app under review</td><td>app</td></tr>
+    <tr><td><b>sticky-notes daemon</b></td><td>one per machine. Accepts Send on a loopback port, keeps the table of live review sessions, stores screenshots, buffers notes that have no target</td><td>node, detached</td><td>from first review session until reboot or kill</td></tr>
+    <tr><td><b>sticky-notes MCP server</b></td><td>one per review session. A stdio MCP server spawned by Claude Code, declaring the <code>claude/channel</code> capability. Connects to the daemon and turns every event for its session into a <code>notifications/claude/channel</code> message. Holds no state of its own</td><td>node, child of Claude Code</td><td>the session</td></tr>
+    <tr><td><b>Claude Code</b></td><td>the session under review. Receives channel events as <code>&lt;channel source="sticky-notes"&gt;</code> tags and acts on them like a message from the user</td><td>terminal</td><td>—</td></tr>
+    <tr><td><b>caddy</b></td><td>existing <code>*.oak.hozak.dev</code> reverse proxy; unchanged</td><td>dev machine</td><td>—</td></tr>
+  </table>
+  </div>
+  <p>The MCP server is the only piece Claude Code knows about. The daemon is invisible to it, which is what allows one daemon to serve every review session on the machine.</p>
+
+  <h2 id="topology">Topology and who initiates</h2>
+  <figure>
+    <svg viewBox="0 0 960 400" role="img" aria-label="Browser posts to caddy then the Rails engine, which forwards to the sticky-notes daemon on a fixed loopback port. The daemon holds one unix-socket connection per review session to a sticky-notes MCP server that Claude Code spawned; that MCP server writes the channel notification to its stdout. The daemon also writes screenshots under ~/.cache/sticky-notes.">
+      <defs><marker id="t1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="currentColor"/></marker></defs>
+      <g fill="none" stroke="currentColor" stroke-width="1.4">
+        <rect x="20" y="60" width="140" height="70" rx="3"/>
+        <rect x="210" y="60" width="100" height="70" rx="3" stroke-dasharray="4 3"/>
+        <rect x="360" y="60" width="150" height="70" rx="3"/>
+        <rect x="560" y="40" width="170" height="110" rx="3"/>
+        <rect x="535" y="200" width="220" height="50" rx="3" stroke-dasharray="4 3"/>
+        <rect x="790" y="40" width="155" height="50" rx="3"/>
+        <rect x="790" y="100" width="155" height="50" rx="3"/>
+        <rect x="790" y="200" width="155" height="50" rx="3"/>
+        <line x1="160" y1="95" x2="208" y2="95" marker-end="url(#t1)"/>
+        <line x1="310" y1="95" x2="358" y2="95" marker-end="url(#t1)"/>
+        <line x1="510" y1="95" x2="558" y2="95" marker-end="url(#t1)"/>
+        <line x1="645" y1="200" x2="645" y2="152" marker-end="url(#t1)"/>
+        <line x1="788" y1="65" x2="732" y2="65" stroke-dasharray="4 3" marker-end="url(#t1)"/>
+        <line x1="788" y1="125" x2="732" y2="125" stroke-dasharray="4 3" marker-end="url(#t1)"/>
+        <line x1="867" y1="150" x2="867" y2="198" marker-end="url(#t1)"/>
+      </g>
+      <g class="svg-accent" fill="none" stroke="currentColor" stroke-width="2.4">
+        <line x1="730" y1="80" x2="788" y2="80" marker-end="url(#t1)"/>
+        <line x1="730" y1="140" x2="788" y2="140" marker-end="url(#t1)"/>
+      </g>
+      <g fill="currentColor" font-size="12.5" text-anchor="middle">
+        <text x="90" y="86" font-weight="600">browser tab</text><text x="90" y="103" font-size="11.5">overlay · Send</text><text x="90" y="119" font-size="10.5" opacity=".7">local or remote</text>
+        <text x="260" y="86" font-weight="600">caddy</text><text x="260" y="103" font-size="11.5">*.oak.hozak.dev</text>
+        <text x="435" y="86" font-weight="600">Rails dev server</text><text x="435" y="103" font-size="11.5">sticky-notes-rails</text><text x="435" y="119" font-size="10.5" opacity=".7">proxy + session list</text>
+        <text x="645" y="66" font-weight="600">sticky-notes daemon</text><text x="645" y="84" font-size="11.5">one per machine</text><text x="645" y="100" font-size="11.5">127.0.0.1:47391 + token</text><text x="645" y="116" font-size="11.5">sessions = open sockets</text><text x="645" y="134" font-size="10.5" opacity=".7">buffers notes with no target</text>
+        <text x="645" y="222" font-weight="600">~/.cache/sticky-notes/</text><text x="645" y="239" font-size="11">daemon.json · daemon.sock · shots/</text>
+        <text x="867" y="60" font-weight="600">sticky-notes MCP server</text><text x="867" y="77" font-size="11">stdio · session A</text>
+        <text x="867" y="120" font-weight="600">sticky-notes MCP server</text><text x="867" y="137" font-size="11">stdio · session B</text>
+        <text x="867" y="220" font-weight="600">Claude Code</text><text x="867" y="237" font-size="11">session B</text>
+        <text x="184" y="86" font-size="11">1 POST</text>
+        <text x="334" y="86" font-size="10.5">proxy</text>
+        <text x="534" y="86" font-size="11">2 POST</text><text x="534" y="115" font-size="10.5" opacity=".75">+ token</text>
+        <text x="760" y="55" font-size="10.5">connect</text>
+        <text x="760" y="98" font-size="10.5" font-weight="600">3 event</text>
+        <text x="760" y="158" font-size="10.5" font-weight="600">3 event</text>
+        <text x="900" y="178" font-size="10.5">4 stdout</text>
+        <text x="655" y="176" font-size="11" text-anchor="start">writes shots, token file</text>
+      </g>
+      <g fill="currentColor" font-size="11.5" text-anchor="start">
+        <text x="20" y="292" font-weight="600">who initiates, in lifetime order</text>
+        <text x="20" y="310">0 Claude Code spawns the MCP server at launch of a review session; the MCP server connects to daemon.sock, spawning the daemon first if the socket is missing</text>
+        <text x="20" y="328">1–2 the reviewer's Send; plain request/response on each hop, nothing stays open beyond the request</text>
+        <text x="20" y="346">3 the daemon writes on the socket it already holds; 4 the MCP server writes on the stdout Claude Code already holds</text>
+        <text x="20" y="364">long-lived: daemon↔MCP server sockets and MCP server↔Claude Code pipes. Nothing ever dials the browser</text>
+        <text x="20" y="384">the browser never learns the port or the token; only the Rails engine does, from a file on the dev machine</text>
+      </g>
+    </svg>
+    <figcaption>Session liveness is the socket itself: an MCP server that exits drops its connection and the daemon forgets the session. Remote browsing needs no extra plumbing, the page already reaches the dev machine through caddy and the loopback hop happens there.</figcaption>
+  </figure>
+
+  <h2 id="review-session">Starting a review session</h2>
+  <p>Only sessions started for review get the MCP server, so other sessions never spawn anything and never appear in the picker. Two launch flags are needed, so they live in one function:</p>
+  <pre><code># ~/.config/fish/functions/claude-review.fish
+function claude-review
+    claude --mcp-config ~/projects/sticky-notes/mcp.json \
+           --dangerously-load-development-channels server:sticky-notes $argv
+end
+
+claude-review                 # new review session
+claude-review --resume &lt;id&gt;   # the session you just left (id printed at exit), now with a channel</code></pre>
+  <ul>
+    <li><b>Why at launch.</b> Claude Code registers channel listeners when it starts and says so in its banner. Nothing can arm a running session; a <code>/sticky-notes</code> skill can only print the command above.</li>
+    <li><b>Upgrading a running session.</b> Leave it and continue it with the flags. Conversation and context survive, only the process restarts.</li>
+    <li><b>Daemon lifecycle.</b> The first MCP server that finds no <code>daemon.sock</code> spawns the daemon detached (own session id, stdio to a log file) and then connects. The daemon keeps running after every session is gone; it is idle and small. <code>sticky-notes-daemon stop</code> ends it.</li>
+    <li><b>After the research preview.</b> The flag becomes <code>--channels server:sticky-notes</code>, still per launch by design, so the function stays.</li>
+    <li><b>Cost.</b> One idle node process per review session plus one daemon per machine, and the warning dialog once per launch during the preview.</li>
+  </ul>
+
+  <h2 id="send">The Send flow</h2>
+  <figure>
+    <svg viewBox="0 0 960 470" role="img" aria-label="Sequence: Claude Code spawns the MCP server; it connects to the daemon socket, spawning the daemon if needed, and registers cwd, pid and label; on page load Rails asks the daemon for live sessions and renders the picker; on Send the browser posts notes and screenshots with the chosen session id; Rails forwards to the daemon with the token; the daemon saves screenshots and writes the event to that session's socket; the MCP server emits the channel notification; 200 travels back.">
+      <defs><marker id="s1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="currentColor"/></marker></defs>
+      <g fill="currentColor" font-size="13" font-weight="600" text-anchor="middle">
+        <text x="80" y="24">Claude Code</text><text x="80" y="40" font-size="11" font-weight="400" opacity=".7">review session</text>
+        <text x="270" y="24">MCP server</text><text x="270" y="40" font-size="11" font-weight="400" opacity=".7">stdio child</text>
+        <text x="470" y="24">daemon</text><text x="470" y="40" font-size="11" font-weight="400" opacity=".7">:47391 · daemon.sock</text>
+        <text x="670" y="24">Rails engine</text><text x="670" y="40" font-size="11" font-weight="400" opacity=".7">any checkout</text>
+        <text x="880" y="24">browser</text><text x="880" y="40" font-size="11" font-weight="400" opacity=".7">overlay</text>
+      </g>
+      <g stroke="currentColor" stroke-width="1" stroke-dasharray="3 4" opacity=".5">
+        <line x1="80" y1="50" x2="80" y2="450"/><line x1="270" y1="50" x2="270" y2="450"/><line x1="470" y1="50" x2="470" y2="450"/><line x1="670" y1="50" x2="670" y2="450"/><line x1="880" y1="50" x2="880" y2="450"/>
+      </g>
+      <g fill="none" stroke="currentColor" stroke-width="1.4">
+        <line x1="80" y1="78" x2="268" y2="78" marker-end="url(#s1)"/>
+        <line x1="270" y1="112" x2="468" y2="112" marker-end="url(#s1)"/>
+        <line x1="270" y1="146" x2="468" y2="146" marker-end="url(#s1)"/>
+        <line x1="670" y1="188" x2="472" y2="188" marker-end="url(#s1)"/>
+        <line x1="670" y1="222" x2="878" y2="222" marker-end="url(#s1)"/>
+        <line x1="880" y1="264" x2="672" y2="264" marker-end="url(#s1)"/>
+        <line x1="670" y1="298" x2="472" y2="298" marker-end="url(#s1)"/>
+        <path d="M470 326 L 490 326 L 490 344 L 472 344" marker-end="url(#s1)"/>
+        <line x1="470" y1="374" x2="272" y2="374" marker-end="url(#s1)"/>
+        <line x1="470" y1="432" x2="878" y2="432" stroke-dasharray="4 3" marker-end="url(#s1)"/>
+      </g>
+      <g class="svg-accent" fill="none" stroke="currentColor" stroke-width="2.4">
+        <line x1="270" y1="404" x2="82" y2="404" marker-end="url(#s1)"/>
+      </g>
+      <g fill="currentColor" font-size="11.5" text-anchor="middle">
+        <text x="175" y="70">1 spawn over stdio</text>
+        <text x="370" y="104">2 connect daemon.sock (spawn daemon if absent)</text>
+        <text x="370" y="138">3 register {cwd, pid, label} → session id</text>
+        <text x="570" y="180">4 page load: GET /sessions (+ token)</text>
+        <text x="872" y="214" text-anchor="end">5 render picker + Send (relative URL)</text>
+        <text x="872" y="256" text-anchor="end">6 Send: POST /sticky-notes/notes {session, notes, jpeg…}</text>
+        <text x="570" y="290">7 POST 127.0.0.1:47391/notes, Authorization: token</text>
+        <text x="500" y="338" text-anchor="start">8 write shots/&lt;session&gt;/&lt;key&gt;-1.jpg, path into note</text>
+        <text x="370" y="366">9 event on that session's socket</text>
+        <text x="175" y="396" font-weight="600">10 notifications/claude/channel</text>
+        <text x="670" y="424" opacity=".8">11 200 back down the chain, bar marks "sent"</text>
+      </g>
+    </svg>
+    <figcaption>Steps 1 to 3 once per review session, 4 and 5 on every page load, 6 to 11 per Send. Claude Code queues the event if a turn is running and hands it over with the next one. The 200 means "written to the MCP server's stdout"; there is no receipt from Claude.</figcaption>
+  </figure>
+
+  <h2 id="picker">Choosing the session</h2>
+  <p>The daemon's session table is the set of open MCP server sockets, each tagged with the cwd, pid and label registered at connect. Only the reviewer knows which session a note is for, so the bar shows a picker whenever more than one is live.</p>
+  <figure>
+    <svg viewBox="0 0 960 260" role="img" aria-label="Three review sessions with different cwds hold three sockets to the daemon; the daemon's table lists them; the Krouzitko page's picker orders them by cwd match, the Portal page's picker orders the same three differently; a fourth picker entry queues notes for the next review session.">
+      <defs><marker id="r1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="currentColor"/></marker></defs>
+      <g fill="none" stroke="currentColor" stroke-width="1.4">
+        <rect x="20" y="20" width="230" height="44" rx="3"/><rect x="20" y="78" width="230" height="44" rx="3"/><rect x="20" y="136" width="230" height="44" rx="3"/>
+        <rect x="330" y="20" width="230" height="160" rx="3"/>
+        <rect x="660" y="20" width="280" height="104" rx="3"/>
+        <rect x="660" y="140" width="280" height="104" rx="3"/>
+        <line x1="250" y1="42" x2="328" y2="60" /><line x1="250" y1="100" x2="328" y2="100"/><line x1="250" y1="158" x2="328" y2="140"/>
+        <line x1="560" y1="100" x2="658" y2="72" marker-end="url(#r1)"/>
+        <line x1="560" y1="100" x2="658" y2="192" marker-end="url(#r1)"/>
+      </g>
+      <g fill="currentColor" font-size="12.5" text-anchor="middle">
+        <text x="135" y="38" font-weight="600">MCP server · cwd ~</text><text x="135" y="55" font-size="11" opacity=".75">pid 4242 · socket</text>
+        <text x="135" y="96" font-weight="600">MCP server · cwd ~/projects/krouzitko</text><text x="135" y="113" font-size="11" opacity=".75">pid 4310 · socket</text>
+        <text x="135" y="154" font-weight="600">MCP server · cwd ~/cloudkdm/portal</text><text x="135" y="171" font-size="11" opacity=".75">pid 4377 · socket</text>
+        <text x="445" y="42" font-weight="600">daemon · sessions</text>
+        <text x="289" y="34" font-size="10.5">open socket</text>
+        <text x="610" y="78" font-size="10.5">GET /sessions</text>
+        <text x="610" y="160" font-size="10.5">GET /sessions</text>
+      </g>
+      <g fill="currentColor" font-size="11.5" text-anchor="start">
+        <text x="342" y="66">s1  ~                    09:15  4242</text>
+        <text x="342" y="84">s2  ~/projects/krouzitko 10:42  4310</text>
+        <text x="342" y="102">s3  ~/cloudkdm/portal    11:03  4377</text>
+        <text x="342" y="130" opacity=".8">socket closes → row gone</text>
+        <text x="342" y="148" opacity=".8">buffer: notes with no target,</text>
+        <text x="342" y="164" opacity=".8">delivered to the next session that registers</text>
+        <text x="672" y="38" font-weight="600">Krouzitko page · picker</text>
+        <text x="672" y="58">1 krouzitko · 10:42       ← cwd = Rails.root</text>
+        <text x="672" y="76">2 ~ · 09:15               ← ancestor</text>
+        <text x="672" y="94">3 portal · 11:03          ← unrelated</text>
+        <text x="672" y="112">4 queue for next review session</text>
+        <text x="672" y="158" font-weight="600">Portal page · picker</text>
+        <text x="672" y="178">1 portal · 11:03          ← cwd = Rails.root</text>
+        <text x="672" y="196">2 ~ · 09:15               ← ancestor</text>
+        <text x="672" y="214">3 krouzitko · 10:42       ← unrelated</text>
+        <text x="672" y="232">4 queue for next review session</text>
+      </g>
+    </svg>
+    <figcaption>Ordering only: cwd equal to Rails.root first, ancestors next, the rest after. Exactly one live session selects itself; otherwise the last choice for this page key from localStorage; otherwise you pick before Send. The queue entry is explicit, never a silent default, so notes cannot land in a session you did not mean.</figcaption>
+  </figure>
+
+  <h2 id="screenshots">Screenshots</h2>
+  <p>A screenshot taken while a note is focused attaches to that note. On Send it travels in the same request, the daemon stores it as a file, and the event carries the path. Claude reads the file only if it decides to, as a native image.</p>
+  <figure>
+    <svg viewBox="0 0 960 210" role="img" aria-label="The overlay re-renders the rectangle at CSS scale, caps the long edge at 1568 pixels and encodes JPEG; the blob is attached to the focused note and sent base64 in the POST; the daemon validates and writes a JPEG under shots/session and puts the absolute path into the note line; Claude reads the path.">
+      <defs><marker id="p1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="currentColor"/></marker></defs>
+      <g fill="none" stroke="currentColor" stroke-width="1.4">
+        <rect x="20" y="40" width="210" height="90" rx="3"/>
+        <rect x="300" y="40" width="190" height="90" rx="3"/>
+        <rect x="560" y="40" width="170" height="90" rx="3" stroke-dasharray="4 3"/>
+        <rect x="800" y="40" width="140" height="90" rx="3"/>
+        <line x1="230" y1="85" x2="298" y2="85" marker-end="url(#p1)"/>
+        <line x1="490" y1="85" x2="558" y2="85" marker-end="url(#p1)"/>
+      </g>
+      <g class="svg-accent" fill="none" stroke="currentColor" stroke-width="2.4">
+        <line x1="798" y1="85" x2="732" y2="85" marker-end="url(#p1)"/>
+      </g>
+      <g fill="currentColor" font-size="12.5" text-anchor="middle">
+        <text x="125" y="62" font-weight="600">overlay</text><text x="125" y="80" font-size="11.5">re-render at CSS scale 1</text><text x="125" y="96" font-size="11.5">long edge ≤ 1568 px</text><text x="125" y="112" font-size="11.5">JPEG q 0.85 → attach to note</text>
+        <text x="395" y="62" font-weight="600">daemon</text><text x="395" y="80" font-size="11.5">JPEG only, ≤ 2 MB</text><text x="395" y="96" font-size="11.5">names the file itself</text><text x="395" y="112" font-size="11.5">path into the note line</text>
+        <text x="645" y="62" font-weight="600">shots/s2/</text><text x="645" y="80" font-size="11.5">kids-12-1.jpg</text><text x="645" y="96" font-size="10.5" opacity=".7">50–200 kB typical</text><text x="645" y="112" font-size="10.5" opacity=".7">outlives the session</text>
+        <text x="870" y="62" font-weight="600">Claude</text><text x="870" y="80" font-size="11.5">Read path</text><text x="870" y="96" font-size="10.5" opacity=".7">~1 000–1 600 tokens</text><text x="870" y="112" font-size="10.5" opacity=".7">only when it looks</text>
+        <text x="264" y="75" font-size="11">base64 in POST</text>
+        <text x="524" y="75" font-size="11">write</text>
+        <text x="765" y="75" font-size="11" font-weight="600">reads</text>
+      </g>
+      <g fill="currentColor" font-size="11.5" text-anchor="start">
+        <text x="20" y="170">token cost follows pixel area (≈ width × height / 750), not file size; images past ~1568 px on the long edge are downscaled anyway.</text>
+        <text x="20" y="190">so the dimension cap saves tokens, JPEG saves disk and transfer, and base64 in the event text would cost 10–20× a Read.</text>
+      </g>
+    </svg>
+    <figcaption>The overlay already holds a canvas from the re-render, so the conversion is one call; the daemon refuses anything that is not a JPEG under the cap. The Download button keeps giving a full-resolution PNG for humans.</figcaption>
+  </figure>
+  <ul>
+    <li><b>Attach.</b> "▭ Screenshot" while a note is focused attaches the blob to that note; with no focused note it stays standalone as today. The bar counts pending screenshots.</li>
+    <li><b>Auto-shot (toggle, default on).</b> On Send, the overlay re-renders each noted element's box with padding and attaches it, so Claude sees every noted element without manual screenshots. About 100–500 ms per note.</li>
+    <li><b>Storage.</b> Pending blobs live in memory until sent; a reload before Send loses them and the bar says so.</li>
+    <li><b>Format.</b> JPEG for photos of UI is fine and universally readable; WebP would be smaller but adds nothing the token budget notices.</li>
+  </ul>
+
+  <h2 id="pages">What each kind of page can do</h2>
+  <div class="scroll">
+  <table>
+    <tr><th>page</th><th>how notes reach Claude</th><th>live push</th><th>screenshots</th><th>notes</th></tr>
+    <tr><td><b>Rails app</b>, local or remote</td><td>Send → engine proxy → daemon → MCP server → channel</td><td>yes</td><td>files under shots/</td><td>the primary path described above</td></tr>
+    <tr><td><b>local HTML file</b> (<code>file://</code>, injected bundle)</td><td>Send → direct POST to <code>127.0.0.1:47391</code> with the token pasted once into the bar (stored in localStorage)</td><td>yes, same machine only</td><td>files</td><td>origin <code>null</code>; the daemon allows it. Useless when browsing remotely</td></tr>
+    <tr><td><b>published artifact</b> (claude.ai)</td><td>Copy Markdown, as today</td><td>no: the viewer sandbox blocks fetch to every host, loopback included</td><td>Download</td><td><b>out of v1.</b> A later version can use the artifact database, see below</td></tr>
+</table>
+  </div>
+  <p>The overlay decides at mount: <code>data-channel</code> present → Rails path; a daemon token in localStorage → direct path; otherwise no Send button. The Markdown body is identical everywhere, so the skill's "reading the export" section holds for all of them.</p>
+  <h3>Artifacts later: the database mailbox</h3>
+  <p>A published artifact cannot reach the daemon, but claude.ai attaches a small JSON document store to each artifact when it is published with <code>capabilities: {db: {}}</code>. Page code reaches it through <code>claude.use("db")</code>; the Claude Code session reads the same store through the Artifact tool's <code>read_db</code> action, as the owner. That gives a mailbox, not a push:</p>
+  <ol>
+    <li>The overlay is injected as today and the artifact is published with the <code>db</code> capability declared. Without it <code>use("db")</code> resolves <code>null</code> and the overlay hides Send.</li>
+    <li>Send writes one document per batch under <code>sticky-notes/&lt;key&gt;/batches/&lt;timestamp&gt;</code>: url, key, title, Markdown, note records, screenshots as base64 JPEG (document size limit to verify; large images may need sibling documents). The viewer consents once on the first write.</li>
+    <li>Nothing wakes the session on a write. The reviewer leaves a comment on the artifact with "Send to Claude", which notifies the publishing session, or says "check notes" in the terminal.</li>
+    <li>The session lists the batches with <code>read_db</code> (<code>out_dir</code> keeps payloads out of context), decodes screenshots into <code>shots/</code>, acts, then marks each batch <code>delivered: true</code> with <code>write_db</code>.</li>
+  </ol>
+  <p>Deferred because reviewing artifacts is rare here, the path shares no code with the daemon design, and it costs one extra gesture per round anyway. Two other capabilities were considered and dropped: a page republishing itself (<code>artifact</code>) does notify the session but rewrites the whole HTML per Send and races the agent's own republishes; <code>room</code> reaches only viewers present right now and persists nothing.</p>
+
+  <h2 id="interfaces">Interfaces and files</h2>
+  <h3>Files</h3>
+  <pre><code>~/.cache/sticky-notes/
+  daemon.json          { port: 47391, token, pid, startedAt }   read by the Rails engine
+  daemon.sock          unix socket for MCP servers
+  daemon.log
+  shots/&lt;session&gt;/&lt;key-slug&gt;-&lt;n&gt;.jpg
+~/projects/sticky-notes/
+  mcp.json             { "mcpServers": { "sticky-notes": { "command": "node", "args": ["server/mcp.js"] } } }
+  server/mcp.js        the per-session MCP server
+  server/daemon.js     the daemon</code></pre>
+  <h3>Daemon HTTP, loopback only, <code>Authorization: Bearer &lt;token&gt;</code></h3>
+  <div class="scroll">
+  <table>
+    <tr><th>call</th><th>body</th><th>returns</th></tr>
+    <tr><td><code>GET /sessions</code></td><td>—</td><td><code>[{ id, cwd, pid, label, startedAt }]</code></td></tr>
+    <tr><td><code>POST /notes</code></td><td><code>{ session: id | "queue", url, key, title, notes: [{ n, path, text, ctx, note, shots: [base64 jpeg] }] }</code></td><td><code>{ delivered: true }</code> or <code>{ queued: true }</code>; 401, 404 unknown session, 413 too large</td></tr>
+    <tr><td><code>POST /stop</code></td><td>—</td><td>daemon exits</td></tr>
+  </table>
+  </div>
+  <h3>MCP server ↔ daemon, newline-delimited JSON over <code>daemon.sock</code></h3>
+  <div class="scroll">
+  <table>
+    <tr><th>direction</th><th>message</th><th>when</th></tr>
+    <tr><td>MCP server → daemon</td><td><code>{ type: "register", cwd, pid, label }</code></td><td>on connect and on every reconnect</td></tr>
+    <tr><td>daemon → MCP server</td><td><code>{ type: "event", content, meta }</code></td><td>per Send; the MCP server forwards it verbatim as <code>notifications/claude/channel</code></td></tr>
+    <tr><td>both</td><td>socket close</td><td>session gone / daemon gone; the MCP server retries every 2 s in the background, respawning the daemon if the socket file is missing</td></tr>
+  </table>
+  </div>
+  <h3>Rails engine</h3>
+  <ul>
+    <li><code>GET /sticky-notes/sessions</code>: reads <code>daemon.json</code>, calls the daemon, returns the list ordered for this <code>Rails.root</code>. 503 when the daemon is unreachable.</li>
+    <li><code>POST /sticky-notes/notes</code>: forwards the body to the daemon with the token, returns its status and JSON unchanged.</li>
+    <li><code>sticky_notes_tag</code> renders <code>data-channel="/sticky-notes"</code> only when the daemon answered at page load. Both routes exist only when <code>StickyNotes::Rails.enabled?</code> (development or staging).</li>
+  </ul>
+  <h3>The event Claude receives</h3>
+  <pre><code>&lt;channel source="sticky-notes" url="https://krouzitko.oak.hozak.dev/kids/12" key="/kids/12" count="2"&gt;
+# Notes on Kid 12
+
+1. `#kid-form [name="kid[name]"]` · "Name" · under: Details
+   Label is cut off at 1280px
+   screenshot: /home/dev/.cache/sticky-notes/shots/s2/kids-12-1.jpg
+2. `#kid-form button[type=submit]` · "Save" · under: Details
+   Should be disabled until the form is dirty
+&lt;/channel&gt;</code></pre>
+  <p>The body is the Markdown the overlay exports today plus a screenshot line where one was attached. The MCP server's <code>instructions</code> tell Claude that events are review notes for the page in <code>url</code>, to Read referenced screenshots before acting, and that no reply is expected.</p>
+
+  <h2 id="failures">Failure modes</h2>
+  <div class="scroll">
+  <table>
+    <tr><th>condition</th><th>where it is caught</th><th>what you see</th><th>what happens</th></tr>
+    <tr><td>no review session live</td><td>daemon: empty session table</td><td>picker offers only "queue for next review session"</td><td>notes wait in the daemon; or Copy Markdown</td></tr>
+    <tr><td>daemon not running</td><td>Rails: connection refused</td><td>Send disabled, "no daemon"</td><td>the next <code>claude-review</code> spawns it; Copy Markdown meanwhile</td></tr>
+    <tr><td>daemon crashed with sessions live</td><td>MCP servers: socket closed</td><td>nothing until the next Send: "no daemon"</td><td>the first MCP server to retry respawns it, all reconnect and re-register; the in-memory queue is lost</td></tr>
+    <tr><td>session ended or crashed</td><td>daemon: socket closed</td><td>row disappears from the picker</td><td>—</td></tr>
+    <tr><td>launched with the config but without the channel flag</td><td>cannot happen through the function; by hand Claude Code drops events silently</td><td>"sent", nothing happens</td><td>keep both flags in one function</td></tr>
+    <tr><td>Claude Code busy in a turn</td><td>Claude Code queues the notification</td><td>"sent", Claude reacts next turn</td><td>—</td></tr>
+    <tr><td>bad token, oversized or non-JPEG image</td><td>daemon 401/413/415, forwarded by Rails</td><td>bar shows the reason</td><td>—</td></tr>
+    <tr><td>reload with unsent screenshots</td><td>overlay</td><td>"2 screenshots lost" on the next mount</td><td>retake</td></tr>
+  </table>
+  </div>
+
+  <h3>Security</h3>
+  <ul>
+    <li>Daemon listens on 127.0.0.1 only; every call needs the token from <code>daemon.json</code> (mode 0600). Remote reach exists only through the app in front, gated as the app is.</li>
+    <li>The engine exposes its two routes only in development and staging, like the overlay itself.</li>
+    <li>File names are generated by the daemon; nothing from the page becomes a path. Images are validated by magic bytes, not by declared type.</li>
+    <li>Channel content is review text for the page; the MCP server's <code>instructions</code> frame it as data, and Claude's normal permission prompts still apply to whatever it does next.</li>
+  </ul>
+
+  <h2 id="verify">To verify in the first spike</h2>
+  <ol>
+    <li>Which cwd Claude Code gives a stdio server from <code>--mcp-config</code>. Needed for picker ordering only.</li>
+    <li>Whether the MCP server's environment carries a session id or name for the picker label. Hooks receive one; MCP servers may not.</li>
+    <li>That servers spawn at launch, not on first tool use. Channels need the process running before the first Send.</li>
+    <li>Verified: <code>--resume &lt;id&gt;</code> with the extra flags restores the conversation and spawns the MCP server. <code>--continue</code> picks the latest conversation in the cwd, which from <code>~</code> is usually another session.</li>
+    <li>That a daemon spawned detached outlives the MCP server and Claude Code.</li>
+    <li>Whether reading <code>~/.cache/sticky-notes/shots/…</code> from a session started elsewhere prompts for permission.</li>
+  </ol>
+
+  <h2 id="design-notes">Design notes</h2>
+  <div class="scroll">
+  <table>
+    <tr><th>choice</th><th>reason</th></tr>
+    <tr><td>channels rather than tools, resources or hooks</td><td>the only mechanism Claude Code offers for an external event to enter a live session unprompted. Tools need the model to call them, resource updates carry no payload and are ignored unprompted, hooks fire only on the session's own events</td></tr>
+    <tr><td>a stdio MCP server per session</td><td>channels must be stdio subprocesses of Claude Code; an HTTP MCP server's notifications are never delivered</td></tr>
+    <tr><td>a daemon behind it</td><td>liveness for free (sockets), one stable address for the engine, buffering when no session is live, room for replies later. About 30 lines more than one process per session with registry files, which needed pid sweeps and had none of that</td></tr>
+    <tr><td>Rails proxy rather than direct loopback POST</td><td>a direct POST points at the reviewer's machine when browsing remotely and leaks the token into the page. Same-origin to the app costs nothing</td></tr>
+    <tr><td>not a caddy route to the daemon</td><td>viable now that the port is fixed, but it means editing caddy per host; kept as the option for static pages behind caddy</td></tr>
+    <tr><td>launch-time only, via <code>claude-review</code></td><td>a user-scope registration would spawn the server in every session, clutter the picker and still need the per-launch channel flag</td></tr>
+    <tr><td>explicit "queue" entry in the picker</td><td>buffered notes would otherwise go to whichever session registers next, which may not be the one you meant</td></tr>
+    <tr><td>files, not inline images</td><td>Claude Code holds tool-result and event images as base64 text; a Read on a file is a native image and is paid only when used</td></tr>
+    <tr><td>JPEG at CSS scale with a 1568 px cap</td><td>token cost follows pixel area; the cap is what saves tokens, JPEG is what saves disk and transfer</td></tr>
+    <tr><td>loopback port rather than a unix socket for Rails</td><td>Ruby HTTP clients want TCP; on one machine port plus token is the same security</td></tr>
+  </table>
+  </div>
+</div>
