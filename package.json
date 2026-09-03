@@ -7,8 +7,12 @@
   "author": "Jakub Hozák",
   "files": [
     "dist",
-    "src"
+    "src",
+    "server"
   ],
+  "bin": {
+    "sticky-notes-daemon": "server/daemon.js"
+  },
   "main": "./dist/sticky-notes.js",
   "module": "./dist/sticky-notes.js",
   "exports": {
