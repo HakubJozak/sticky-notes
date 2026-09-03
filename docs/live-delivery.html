@@ -140,7 +140,7 @@ claude-review                 # new review session
 claude-review --resume &lt;id&gt;   # the session you just left (id printed at exit), now with a channel</code></pre>
   <ul>
     <li><b>Why at launch.</b> Claude Code registers channel listeners when it starts and says so in its banner. Nothing can arm a running session; a <code>/sticky-notes</code> skill can only print the command above.</li>
-    <li><b>Upgrading a running session.</b> Leave it and continue it with the flags. Conversation and context survive, only the process restarts.</li>
+    <li><b>Upgrading a running session.</b> Leave it, then <code>claude-review --resume &lt;id&gt;</code> with the id printed at exit. Conversation and context survive, only the process restarts.</li>
     <li><b>Daemon lifecycle.</b> The first MCP server that finds no <code>daemon.sock</code> spawns the daemon detached (own session id, stdio to a log file) and then connects. The daemon keeps running after every session is gone; it is idle and small. <code>sticky-notes-daemon stop</code> ends it.</li>
     <li><b>After the research preview.</b> The flag becomes <code>--channels server:sticky-notes</code>, still per launch by design, so the function stays.</li>
     <li><b>Cost.</b> One idle node process per review session plus one daemon per machine, and the warning dialog once per launch during the preview.</li>
