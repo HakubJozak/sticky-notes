@@ -62,6 +62,18 @@ describe("toMarkdown", () => {
   it("returns just the header for an empty list", () => {
     expect(toMarkdown([], META)).toBe("# Notes on Review page\nhttps://example.test/report\n")
   })
+
+  it("lists attached screenshots after the comment, indented like it", () => {
+    const lines = toMarkdown([row({ shots: ["/home/dev/.cache/sticky-notes/shots/s2/kids-12-1.jpg"] })], META).split("\n")
+
+    expect(lines.slice(3)).toEqual([
+      "1. `#report > h2`",
+      "   > Quarterly report",
+      "   typo",
+      "   screenshot: /home/dev/.cache/sticky-notes/shots/s2/kids-12-1.jpg",
+      "",
+    ])
+  })
 })
 
 describe("toJson", () => {

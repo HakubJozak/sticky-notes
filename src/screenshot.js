@@ -3,6 +3,7 @@
    re-render, not a screenshot: fonts, cross-origin images and exotic CSS can
    differ from the screen. Good enough to hand an agent visual context. */
 import { domToBlob } from "modern-screenshot"
+import { slug } from "./slug.js"
 
 const OVERLAY_CLASS = "sticky-notes-screenshot"
 const RECT_CLASS = "sticky-notes-screenshot__rect"
@@ -102,8 +103,6 @@ export function captureRect(doc, { x, y, w, h }) {
 }
 
 export const screenshotFileName = (key, n) => `${slug(key)}-${FILE_PREFIX}-${n}.png`
-
-const slug = (key) => String(key).replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "page"
 
 export function download(doc, blob, name) {
   const view = doc.defaultView
