@@ -2210,8 +2210,8 @@ function createChannel({ base, token = null, fetch: fetch2 }) {
   }
   return { sessions, send };
 }
-function detectChannel({ base, storage, fetch: fetch2 }) {
-  if (base) return createChannel({ base, fetch: fetch2 });
+function detectChannel({ base, token: pageToken = null, storage, fetch: fetch2 }) {
+  if (base) return createChannel({ base, token: pageToken, fetch: fetch2 });
   const token = readToken(storage);
   if (token) return createChannel({ base: DIRECT_BASE, token, fetch: fetch2 });
   return null;
@@ -2258,7 +2258,7 @@ function createStickyNotes(options = {}) {
   let autoShot = readAutoShot();
   function resolveChannel(given) {
     if (given && typeof given === "object") return given;
-    return detectChannel({ base: given, storage, fetch: fetchFn });
+    return detectChannel({ base: given, token: options.channelToken, storage, fetch: fetchFn });
   }
   const save = () => store.save(notes);
   const rerender = () => layer?.render(notes);

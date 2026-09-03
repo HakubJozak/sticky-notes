@@ -39,6 +39,7 @@ options = {
   channel: undefined,       // base URL of the channel ("/sticky-notes" under the engine) or an
                             // object { sessions(), send(payload) }; unset = the direct daemon
                             // when a token is stored, else no channel and no Send
+  channelToken: undefined,  // page token for the engine channel (data-channel-token)
   fetch: globalThis.fetch,  // injected in tests
 }
 
@@ -80,7 +81,7 @@ Note record: `{ id, path, anchored, text, ctx, note, created, dx, dy, w, h, coll
 | `layer.js` | DOM: bar, export pane, leaders SVG, note boxes, badges; drag/resize; picking mode listeners (AbortController) |
 | `geometry.js` | `anchorOf`, `initialOffset`, `placeNote`, `placeBadge`, leader endpoints |
 | `screenshot.js` | `selectRect(doc)` marquee → page rect; `captureRect(doc, rect)` → canvas, DOM re-render via modern-screenshot (document shifted by `translate(-x,-y)`, clipped to w×h); `captureElement(doc, el, padding)` via `paddedRect`; `toPng` / `toJpeg` (`jpegSize` downscales to `JPEG_MAX_EDGE` 1568 px at `JPEG_QUALITY` 0.85 — token cost follows pixel area); `download`, `copyImage` |
-| `channel.js` | `createChannel({ base, token, fetch })` → `{ sessions(), send(payload) }`, `ChannelError(status)`; `detectChannel` picks the engine base, else a stored token + `DIRECT_BASE` (`http://127.0.0.1:47391`), else null; `readToken` / `saveToken` |
+| `channel.js` | `createChannel({ base, token, fetch })` → `{ sessions(), send(payload) }`, `ChannelError(status)`; `detectChannel({ base, token, storage, fetch })` picks the engine base with the page token, else a stored token + `DIRECT_BASE` (`http://127.0.0.1:47391`), else null; `readToken` / `saveToken` |
 | `picker.js` | the session `<select>`: one live session picks itself, otherwise the remembered id, otherwise "pick a session…"; `queue` is always offered and never automatic |
 | `slug.js` | `slug(key)` — file-name-safe page key, shared with the daemon so both name shots alike |
 | `stimulus.js` | `export default class StickyNotesController extends Controller` (see below) |
@@ -143,7 +144,7 @@ import { Controller } from "@hotwired/stimulus"
 import { createStickyNotes } from "./index.js"
 
 export default class extends Controller {
-  static values = { key: String, channel: String }
+  static values = { key: String, channel: String, channelToken: String }
   connect()    { mount into this.element with key; listen turbo:frame-render + turbo:morph → refresh; turbo:before-cache → unmount }
   disconnect() { remove listeners; unmount }
 }
@@ -160,9 +161,9 @@ import { attach } from "@hakubjozak/sticky-notes/turbo"
 attach()                       // default selector "[data-sticky-notes]"
 ```
 
-Mounts the singleton into the element with `key: el.dataset.key` and
-`channel: el.dataset.channel` (the engine renders `data-channel` only while a
-daemon answers). Turbo
+Mounts the singleton into the element with `key: el.dataset.key`,
+`channel: el.dataset.channel` and `channelToken: el.dataset.channelToken` (the
+engine renders `data-channel` only while a daemon answers). Turbo
 re-evaluates inline body module scripts on every visit, so `attach()` runs many
 times per page: a module-level flag registers the listeners once, and every call
 just re-mounts (the host element is a new node after each visit). Without Turbo
@@ -178,13 +179,17 @@ as: "sticky_notes" }` when enabled, so a host edits nothing but its layout.
 
 - `StickyNotes::Rails.enabled?` — `config.sticky_notes.enabled` if set, else
   development or staging.
+- `StickyNotes::Rails.channel?` — live delivery, `enabled?` and development,
+  unless `config.sticky_notes.channel = true` opts a staging box in.
+- `StickyNotes::Rails.channel_token` — `SecureRandom.hex(16)` per boot, rendered
+  into the page and required on every channel call.
 - `StickyNotes::AssetsController` (< `ActionController::Base`, CSRF skipped)
   serves `dist/*.js` from the gem with `fresh_when`; route named `script`
   (never `asset` — `asset_path` is an ActionView helper).
 - `sticky_notes_tag(key: nil, anchors: nil)` → the `[data-sticky-notes]` div plus
   an inline `<script type="module">` calling `attach()`. Not `data-turbo-temporary`.
-  Adds `data-channel="/sticky-notes"` only while the daemon answers, so a page
-  loaded without one shows no Send.
+  Adds `data-channel="/sticky-notes"` and `data-channel-token` while the daemon
+  answers, so a page loaded without one shows no Send.
 - `StickyNotes::Rails::Daemon` — http.rb (gem dep `http >= 5`), 2 s global
   timeout so a wedged daemon cannot stall a page render, `Unreachable` for
   every transport error. `sessions(root:)` orders the daemon's list for this
@@ -194,7 +199,10 @@ as: "sticky_notes" }` when enabled, so a host edits nothing but its layout.
   `GET /sticky-notes/sessions` returns the ordered list, `POST
   /sticky-notes/notes` forwards the raw body and returns the daemon's status and
   JSON unchanged (401/404/413/415 pass through). Both answer 503 when the daemon
-  is unreachable. Routed only when `StickyNotes::Rails.enabled?`.
+  is unreachable. Every call must carry `Authorization: Bearer <channel_token>`
+  or it is 401 — a hostile page can guess the URL but not the token, and the
+  header forces a CORS preflight the engine never answers. Routed only when
+  `StickyNotes::Rails.channel?`.
 
 ## Scripts (`scripts/`, node, no deps)
 

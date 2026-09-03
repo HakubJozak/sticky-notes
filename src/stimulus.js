@@ -4,12 +4,13 @@ import { createStickyNotes } from "./index.js"
 // The controller element must NOT be data-turbo-temporary — Turbo would drop
 // it from the restoration snapshot and the layer would never come back.
 export default class extends Controller {
-  static values = { key: String, channel: String }
+  static values = { key: String, channel: String, channelToken: String }
 
   connect() {
     this.notes = createStickyNotes({
       key: this.hasKeyValue ? this.keyValue : undefined,
       channel: this.hasChannelValue ? this.channelValue : undefined,
+      channelToken: this.hasChannelTokenValue ? this.channelTokenValue : undefined,
       root: this.element
     })
     this.notes.mount()

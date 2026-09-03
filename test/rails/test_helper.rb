@@ -15,6 +15,8 @@ class DummyApp < Rails::Application
   config.logger = Logger.new(nil)
   config.hosts.clear
   config.sticky_notes.enabled = true
+  # Rails.env is "development" here, but say it: the channel is what these tests exercise.
+  config.sticky_notes.channel = true
   # Rails.root is the repo root here, so the engine's config/routes.rb would
   # also be read as the app's own and every engine route drawn twice.
   config.paths["config/routes.rb"] = []

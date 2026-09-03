@@ -5,8 +5,8 @@ module StickyNotesHelper
     return unless StickyNotes::Rails.enabled?
 
     # one loopback call per page load; connection refused is instant when the daemon is down
-    channel = sticky_notes.sessions_path.delete_suffix(StickyNotes::Rails::Daemon::SESSIONS) if StickyNotes::Rails.daemon.alive?
+    channel = sticky_notes.sessions_path.delete_suffix(StickyNotes::Rails::Daemon::SESSIONS) if StickyNotes::Rails.channel? && StickyNotes::Rails.daemon.alive?
 
-    render "sticky_notes/tag", key:, anchors:, channel:
+    render "sticky_notes/tag", key:, anchors:, channel:, channel_token: (StickyNotes::Rails.channel_token if channel)
   end
 end

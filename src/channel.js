@@ -1,5 +1,6 @@
 /* Browser side of live delivery. Two transports, one interface:
-   - Rails path: same-origin `${base}/sessions|notes`, the engine adds the token
+   - Rails path: same-origin `${base}/sessions|notes` with the page token the
+     engine rendered; the engine adds the daemon token
    - direct path: loopback daemon with a token the reviewer pasted once (file:// pages) */
 const SESSIONS_PATH = "/sessions"
 const NOTES_PATH = "/notes"
@@ -34,8 +35,8 @@ export function createChannel({ base, token = null, fetch }) {
   return { sessions, send }
 }
 
-export function detectChannel({ base, storage, fetch }) {
-  if (base) return createChannel({ base, fetch })
+export function detectChannel({ base, token: pageToken = null, storage, fetch }) {
+  if (base) return createChannel({ base, token: pageToken, fetch })
 
   const token = readToken(storage)
   if (token) return createChannel({ base: DIRECT_BASE, token, fetch })

@@ -41,7 +41,7 @@ export function createStickyNotes(options = {}) {
   function resolveChannel(given) {
     if (given && typeof given === "object") return given
 
-    return detectChannel({ base: given, storage, fetch: fetchFn })
+    return detectChannel({ base: given, token: options.channelToken, storage, fetch: fetchFn })
   }
 
   const save = () => store.save(notes)
