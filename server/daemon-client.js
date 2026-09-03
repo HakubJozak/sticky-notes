@@ -9,6 +9,7 @@ import { readLines, writeLine } from "./ndjson.js"
 const DEFAULT_RETRY_MS = 2000
 const REGISTER = "register"
 const EVENT = "event"
+const ECONNREFUSED = "ECONNREFUSED"
 
 export function connectDaemon({ meta, onEvent, log, retryMs = DEFAULT_RETRY_MS }) {
   let socket = null
@@ -25,7 +26,15 @@ export function connectDaemon({ meta, onEvent, log, retryMs = DEFAULT_RETRY_MS }
       writeLine(socket, { type: REGISTER, ...meta })
     })
     readLines(socket, (message) => message.type === EVENT && onEvent(message), (error) => log(`daemon: ${error.message}`))
-    socket.on("error", (error) => log(`daemon: ${error.message}`))
+    socket.on("error", (error) => {
+      log(`daemon: ${error.message}`)
+      // A stale socket file (daemon crashed without cleanup) refuses every
+      // connection forever; only a fresh daemon can unlink and replace it.
+      if (error.code === ECONNREFUSED) {
+        log("stale socket — respawning daemon")
+        spawnDaemon()
+      }
+    })
     socket.on("close", () => {
       socket = null
       if (!closed) timer = setTimeout(open, retryMs)
