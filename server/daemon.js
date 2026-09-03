@@ -54,10 +54,12 @@ export async function start() {
   writeFileSync(infoPath(), JSON.stringify(info), { mode: OWNER_ONLY })
   log(`listening on ${LOOPBACK}:${info.port} and ${sockPath()}`)
 
-  // Tests run the daemon in-process and only need the listeners gone.
+  // Tests run the daemon in-process: process.exit() isn't there to make the OS
+  // hang up on peers, so do it ourselves — a stopped daemon has no sessions.
   function stopServers() {
     httpServer.close()
     socketServer.close()
+    sessions.closeAll()
     for (const file of [infoPath(), sockPath()]) if (existsSync(file)) unlinkSync(file)
   }
 

@@ -27,6 +27,9 @@ export function createSessions() {
 
   const has = (id) => live.has(id)
 
+  // Snapshot before destroying: each socket's own "close" handler drains `live`.
+  const closeAll = () => [...live.values()].forEach(({ socket }) => socket.destroy())
+
   function deliver(id, event) {
     if (id === QUEUE) {
       queued.push(event)
@@ -45,6 +48,7 @@ export function createSessions() {
     list,
     has,
     deliver,
+    closeAll,
     get queued() {
       return queued.length
     },
