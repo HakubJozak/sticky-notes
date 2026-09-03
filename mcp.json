@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "sticky-notes": {
+      "command": "node",
+      "args": ["/home/dev/projects/sticky-notes/server/mcp.js"]
+    }
+  }
+}
