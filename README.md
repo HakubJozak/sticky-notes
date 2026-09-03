@@ -206,6 +206,7 @@ migrated on first read.
 | `refresh()` | re-anchor after the host swapped DOM |
 | `toggle(on?)` | picking mode |
 | `export(format)` | `"markdown"` \| `"json"` → string, copies to clipboard, shows the pane |
+| `snap(rect?)` | capture `{ x, y, w, h }` (page px) → `Promise<Blob>`; without `rect` the reviewer drags a marquee. DOM re-render via modern-screenshot, so fonts/cross-origin images can differ from the screen |
 | `clear()` | drop every note in this bucket |
 | `notes` | readonly array of note records |
 

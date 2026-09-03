@@ -29,7 +29,7 @@ export function createStickyNotes(options = {}) {
 
     root = options.root ?? document.body
     notes = store.load()
-    layer = createLayer({ root, onPick, onChange: save, onRemove, onClear: clear, onExport: exportNotes })
+    layer = createLayer({ root, key, onPick, onChange: save, onRemove, onClear: clear, onExport: exportNotes })
     layer.mount()
     rerender()
 
@@ -118,11 +118,15 @@ export function createStickyNotes(options = {}) {
     )
   }
 
+  // rect = { x, y, w, h } in page px; omit it for the interactive marquee. → Blob | null
+  const snap = (rect) => layer?.snap(rect) ?? Promise.resolve(null)
+
   const instance = {
     mount,
     unmount,
     refresh,
     toggle,
+    snap,
     export: exportNotes,
     clear,
     get notes() {

@@ -77,6 +77,7 @@ as "(element not found …)" where it does not — mention those.
 | badge click · – | collapse / expand |
 | ✕ | remove (one click); **Clear** removes all (confirm) |
 | Copy Markdown / JSON | clipboard + preview pane; URL + title in header; orphaned notes flagged |
+| ▭ Snap → drag rectangle | DOM re-render (not a screenshot) of the area, downloaded as `<key-slug>-snap-<n>.png` and copied to the clipboard; look in `~/Downloads` when the user mentions a snap. Programmatic: `instance.snap({ x, y, w, h })` → Blob |
 | Esc | leave note mode |
 
 Namespace `.sticky-notes-bar`, `.sticky-note`, `.sticky-note-badge`, etc. —

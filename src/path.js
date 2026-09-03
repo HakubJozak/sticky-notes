@@ -3,7 +3,7 @@
 
 // Our own UI must never be picked, quoted, or used as heading context.
 export const LAYER_SELECTOR =
-  ".sticky-notes-bar, .sticky-notes-export, .sticky-notes-leaders, .sticky-note, .sticky-note-badge"
+  ".sticky-notes-bar, .sticky-notes-export, .sticky-notes-leaders, .sticky-notes-snap, .sticky-note, .sticky-note-badge"
 
 // Attributes the app puts on elements on purpose — the strongest anchor we can get.
 const DEFAULT_ANCHORS = ["data-testid", "data-test"]

@@ -205,3 +205,24 @@ body.sticky-notes-picking * {
   white-space: pre-wrap;
   text-align: left;
 }
+
+.sticky-notes-snap {
+  position: fixed;
+  inset: 0;
+  z-index: 2147482940;
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+}
+
+.sticky-notes-snap__rect {
+  position: fixed;
+  border: 1px dashed #e0b400;
+  background: rgba(224, 180, 0, 0.08);
+  box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
+.sticky-notes-snap__rect[hidden] {
+  display: none !important;
+}

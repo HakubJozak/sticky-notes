@@ -49,5 +49,8 @@
     "sticky-notes",
     "stimulus",
     "turbo"
-  ]
+  ],
+  "dependencies": {
+    "modern-screenshot": "^4.7.0"
+  }
 }

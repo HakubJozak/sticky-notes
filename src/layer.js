@@ -5,6 +5,7 @@ import css from "./style.css?inline"
 import { LAYER_SELECTOR } from "./path.js"
 import { MARKDOWN, JSON_FORMAT } from "./exporter.js"
 import { DEFAULT_BOX, placeNote, placeBadge, leaderEnds } from "./geometry.js"
+import { selectRect, captureRect, snapFileName, download, copyImage } from "./snap.js"
 
 const STYLE_ID = "sticky-notes-style"
 const SVG_NS = "http://www.w3.org/2000/svg"
@@ -19,6 +20,7 @@ const BADGE_CLASS = "sticky-note-badge"
 const DRAGGING_CLASS = "sticky-note--dragging"
 
 const TOGGLE_COMMAND = "toggle"
+const SNAP_COMMAND = "snap"
 const EXPORT_MARKDOWN_COMMAND = "export-markdown"
 const EXPORT_JSON_COMMAND = "export-json"
 const CLEAR_COMMAND = "clear"
@@ -26,6 +28,10 @@ const COLLAPSE_COMMAND = "collapse"
 const REMOVE_COMMAND = "remove"
 
 const TOGGLE_LABEL = "✎ Notes"
+const SNAP_LABEL = "▭ Snap"
+const SNAP_HINT = "drag a rectangle · Esc cancels"
+const RENDERING_MESSAGE = "rendering…"
+const SNAP_FAILED_MESSAGE = "snap failed"
 const MARKDOWN_LABEL = "Copy Markdown"
 const JSON_LABEL = "Copy JSON"
 const CLEAR_LABEL = "Clear"
@@ -39,7 +45,7 @@ const LEADER_WIDTH = 1.5
 const LEADER_DASH = "2 4"
 const ANCHOR_DOT_RADIUS = 2.5
 
-export function createLayer({ root, onPick, onChange, onRemove, onClear, onExport }) {
+export function createLayer({ root, key, onPick, onChange, onRemove, onClear, onExport }) {
   const doc = root.ownerDocument
   const view = doc.defaultView
   const live = new Map() // note id → { el, box, badge, observer }
@@ -55,6 +61,7 @@ export function createLayer({ root, onPick, onChange, onRemove, onClear, onExpor
   let picking = false
   let hovered = null
   let messageTimer = 0
+  let snapCount = 0
 
   function mount() {
     injectStyle()
@@ -86,6 +93,7 @@ export function createLayer({ root, onPick, onChange, onRemove, onClear, onExpor
     bar.innerHTML = `
       <button class="sticky-notes-bar__button" type="button" data-command="${TOGGLE_COMMAND}" aria-pressed="false">${TOGGLE_LABEL}</button>
       <span class="sticky-notes-bar__count">0</span>
+      <button class="sticky-notes-bar__button" type="button" data-command="${SNAP_COMMAND}">${SNAP_LABEL}</button>
       <button class="sticky-notes-bar__button" type="button" data-command="${EXPORT_MARKDOWN_COMMAND}">${MARKDOWN_LABEL}</button>
       <button class="sticky-notes-bar__button" type="button" data-command="${EXPORT_JSON_COMMAND}">${JSON_LABEL}</button>
       <button class="sticky-notes-bar__button" type="button" data-command="${CLEAR_COMMAND}">${CLEAR_LABEL}</button>
@@ -115,6 +123,7 @@ export function createLayer({ root, onPick, onChange, onRemove, onClear, onExpor
     if (!command) return
 
     if (command === TOGGLE_COMMAND) setPicking(!picking)
+    if (command === SNAP_COMMAND) snap()
     if (command === EXPORT_MARKDOWN_COMMAND) onExport(MARKDOWN)
     if (command === EXPORT_JSON_COMMAND) onExport(JSON_FORMAT)
     if (command === CLEAR_COMMAND) onClear()
@@ -168,6 +177,30 @@ export function createLayer({ root, onPick, onChange, onRemove, onClear, onExpor
     messageEl.textContent = text
     view.clearTimeout(messageTimer)
     messageTimer = view.setTimeout(() => (messageEl.textContent = ""), MESSAGE_MS)
+  }
+
+  // rect omitted → interactive marquee; given → capture straight away (agents, tests)
+  async function snap(rect = null) {
+    setPicking(false)
+    if (!rect) message(SNAP_HINT)
+
+    const area = rect ?? (await selectRect(doc))
+    if (!area) return null
+
+    message(RENDERING_MESSAGE)
+
+    try {
+      const blob = await captureRect(doc, area)
+      const name = snapFileName(key, ++snapCount)
+      download(doc, blob, name)
+      const copied = await copyImage(view, blob)
+      message(copied ? `${name} saved + copied` : `${name} saved`)
+
+      return blob
+    } catch (error) {
+      message(SNAP_FAILED_MESSAGE)
+      throw error
+    }
   }
 
   function showExport(text) {
@@ -364,6 +397,7 @@ export function createLayer({ root, onPick, onChange, onRemove, onClear, onExpor
     focusNote,
     message,
     showExport,
+    snap,
     get picking() {
       return picking
     },
