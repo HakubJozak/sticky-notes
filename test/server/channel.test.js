@@ -8,12 +8,12 @@ const request = (id, method, params = {}) => JSON.stringify({ jsonrpc: "2.0", id
 const notification = (method) => JSON.stringify({ jsonrpc: "2.0", method }) + "\n"
 const tick = () => new Promise((resolve) => setImmediate(resolve))
 
-function boot() {
+function boot(opts = {}) {
   const input = new PassThrough()
   const output = new PassThrough()
   const out = []
   output.on("data", (chunk) => out.push(...String(chunk).split("\n").filter(Boolean).map(JSON.parse)))
-  const server = createChannelServer({ input, output, instructions: "review notes", version: "0.2.0" })
+  const server = createChannelServer({ input, output, instructions: "review notes", version: "0.2.0", ...opts })
 
   return { input, out, server }
 }
@@ -48,8 +48,8 @@ describe("createChannelServer", () => {
     ])
   })
 
-  it("holds events until initialized, then pushes channel notifications", async () => {
-    const { input, out, server } = boot()
+  it("holds events until the client is initialized, then pushes channel notifications after the arming delay", async () => {
+    const { input, out, server } = boot({ readyDelayMs: 20 })
     server.notify("# Notes", { count: "1" })
     await tick()
     expect(out).toEqual([])
@@ -58,6 +58,9 @@ describe("createChannelServer", () => {
     await tick()
     server.notify("# More", { count: "2" })
     await tick()
+    expect(out.slice(1)).toEqual([]) // still buffering: the arming delay has not fired yet
+
+    await new Promise((resolve) => setTimeout(resolve, 40))
 
     expect(out.slice(1)).toEqual([
       { jsonrpc: "2.0", method: "notifications/claude/channel", params: { content: "# Notes", meta: { count: "1" } } },

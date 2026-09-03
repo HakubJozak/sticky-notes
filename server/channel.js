@@ -9,8 +9,10 @@ const CHANNEL_CAPABILITY = "claude/channel"
 const CHANNEL_NOTIFICATION = "notifications/claude/channel"
 const INITIALIZED = "notifications/initialized"
 const METHOD_NOT_FOUND = -32601
+// Claude Code 2.1.259 drops a channel notification pushed in the first moments after the handshake
+const READY_DELAY_MS = 3000
 
-export function createChannelServer({ input, output, instructions, version }) {
+export function createChannelServer({ input, output, instructions, version, readyDelayMs = READY_DELAY_MS }) {
   const pending = [] // events that arrived before Claude Code finished the handshake
   let ready = false
 
@@ -28,7 +30,7 @@ export function createChannelServer({ input, output, instructions, version }) {
   readLines(input, onMessage, (error) => console.error(`channel: ${error.message}`))
 
   function onMessage(message) {
-    if (message.method === INITIALIZED) return flush()
+    if (message.method === INITIALIZED) return arm()
     if (message.id === undefined) return // other notifications need no answer
 
     const handler = handlers[message.method]
@@ -37,6 +39,11 @@ export function createChannelServer({ input, output, instructions, version }) {
     }
 
     writeLine(output, { jsonrpc: JSONRPC, id: message.id, result: handler(message.params ?? {}) })
+  }
+
+  function arm() {
+    const timer = setTimeout(flush, readyDelayMs)
+    timer.unref?.()
   }
 
   function flush() {
