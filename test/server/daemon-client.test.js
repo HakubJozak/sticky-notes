@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect, beforeEach, afterEach } from "vitest"
 import { mkdtempSync, rmSync, readFileSync, existsSync, writeFileSync } from "node:fs"
+import { createServer } from "node:net"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { start } from "../../server/daemon.js"
@@ -97,6 +98,31 @@ describe("connectDaemon", () => {
       await fetch(`http://127.0.0.1:${info.port}/stop`, { method: "POST", headers: { authorization: `Bearer ${info.token}` } })
       await until(() => !existsSync(infoFile(home)))
     } finally {
+      await stopIfRunning(home)
+    }
+  })
+
+  // A daemon whose HTTP port is taken exits before it can serve the socket it
+  // just bound: without the unlink + cooldown every retry spawns another one.
+  it("spawns at most once while the daemon cannot start", async () => {
+    const blocker = createServer()
+    await new Promise((resolve) => blocker.listen(0, "127.0.0.1", resolve))
+    process.env.STICKY_NOTES_PORT = String(blocker.address().port)
+    writeFileSync(sockPath(), "") // stale: nothing listens behind it
+    const lines = []
+    let client
+
+    try {
+      client = connectDaemon({ meta: META, onEvent: () => {}, log: (line) => lines.push(line), retryMs: RETRY_MS })
+
+      await until(() => !existsSync(sockPath())) // the doomed daemon unlinked its own socket
+      await wait(RETRY_MS * 5)
+
+      expect(lines.filter((line) => line === "spawning daemon")).toHaveLength(1)
+      expect(existsSync(infoFile(home))).toBe(false)
+    } finally {
+      client?.close()
+      blocker.close()
       await stopIfRunning(home)
     }
   })

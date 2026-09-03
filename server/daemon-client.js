@@ -7,6 +7,8 @@ import { daemonPath, home, logPath, sockPath } from "./paths.js"
 import { readLines, writeLine } from "./ndjson.js"
 
 const DEFAULT_RETRY_MS = 2000
+const SPAWN_COOLDOWN_MS = 10_000
+const SPAWNING = "spawning daemon"
 const REGISTER = "register"
 const EVENT = "event"
 const ECONNREFUSED = "ECONNREFUSED"
@@ -15,10 +17,21 @@ export function connectDaemon({ meta, onEvent, log, retryMs = DEFAULT_RETRY_MS }
   let socket = null
   let timer = null
   let closed = false
+  let lastSpawnAt = 0
+
+  // A daemon that cannot start (its port held by something else) leaves nothing
+  // to connect to; without the cooldown every retry spawns another doomed one.
+  function spawnUnlessRecent() {
+    if (Date.now() - lastSpawnAt < SPAWN_COOLDOWN_MS) return log("daemon spawn on cooldown")
+
+    lastSpawnAt = Date.now()
+    log(SPAWNING)
+    spawnDaemon()
+  }
 
   function open() {
     if (closed) return
-    if (!existsSync(sockPath())) spawnDaemon()
+    if (!existsSync(sockPath())) spawnUnlessRecent()
 
     socket = connect(sockPath())
     socket.on("connect", () => {
@@ -32,7 +45,7 @@ export function connectDaemon({ meta, onEvent, log, retryMs = DEFAULT_RETRY_MS }
       // connection forever; only a fresh daemon can unlink and replace it.
       if (error.code === ECONNREFUSED) {
         log("stale socket — respawning daemon")
-        spawnDaemon()
+        spawnUnlessRecent()
       }
     })
     socket.on("close", () => {

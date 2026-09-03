@@ -48,7 +48,14 @@ export async function start() {
     if (await socketAlive()) return null // lost the bind race: a peer got there first
     throw error
   }
-  await listen(httpServer, port(), LOOPBACK)
+  try {
+    await listen(httpServer, port(), LOOPBACK)
+  } catch (error) {
+    // close() unlinks daemon.sock: a socket file nobody serves makes every MCP
+    // server respawn us every retry, forever
+    socketServer.close()
+    throw error
+  }
 
   const info = { port: httpServer.address().port, token, pid: process.pid, startedAt: new Date().toISOString() }
   writeFileSync(infoPath(), JSON.stringify(info), { mode: OWNER_ONLY })
