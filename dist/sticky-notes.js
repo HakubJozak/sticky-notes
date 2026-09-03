@@ -1,4 +1,4 @@
-const LAYER_SELECTOR = ".sticky-notes-bar, .sticky-notes-export, .sticky-notes-leaders, .sticky-notes-snap, .sticky-note, .sticky-note-badge";
+const LAYER_SELECTOR = ".sticky-notes-bar, .sticky-notes-export, .sticky-notes-leaders, .sticky-notes-screenshot, .sticky-note, .sticky-note-badge";
 const DEFAULT_ANCHORS$1 = ["data-testid", "data-test"];
 const GENERATED_ID = /^(?:[0-9a-f-]{20,}|radix-|headlessui-|mui-|react-|:)/i;
 const WEAK_ANCHOR_SEGMENT = /\[(name|action)=/;
@@ -141,7 +141,7 @@ function flagsOf(row) {
   if (row.anchored === false) flags += ` ${UNANCHORED_FLAG}`;
   return flags;
 }
-const css = '/* Injected once at mount as <style id="sticky-notes-style">.\n   `all: unset` on controls and a z-index near the maximum keep the layer intact\n   on host pages with aggressive CSS. Host pages may lack a [hidden] reset, so we\n   ship our own. */\n\n.sticky-notes-bar {\n  position: fixed;\n  right: 16px;\n  bottom: 16px;\n  z-index: 2147482930;\n  display: flex;\n  gap: 6px;\n  align-items: center;\n  background: var(--card, #fff);\n  color: var(--ink, #1e2430);\n  border: 1px solid var(--line, #c8ccd4);\n  padding: 6px 8px;\n  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);\n  font: 12px "IBM Plex Mono", ui-monospace, Menlo, monospace;\n}\n\n.sticky-notes-bar__button {\n  all: unset;\n  cursor: pointer;\n  padding: 6px 10px;\n  border: 1px solid var(--line, #c8ccd4);\n  font: inherit;\n  line-height: 1;\n  white-space: nowrap;\n}\n\n.sticky-notes-bar__button:hover {\n  background: rgba(0, 0, 0, 0.06);\n}\n\n.sticky-notes-bar__button[aria-pressed="true"] {\n  background: #e0b400;\n  color: #1e2430;\n  border-color: #e0b400;\n}\n\n.sticky-notes-bar__count {\n  opacity: 0.6;\n  min-width: 3ch;\n  text-align: center;\n}\n\n.sticky-notes-bar__message {\n  opacity: 0.6;\n}\n\nbody.sticky-notes-picking,\nbody.sticky-notes-picking * {\n  cursor: crosshair !important;\n}\n\n.sticky-notes-hover {\n  outline: 2px dashed #e0b400 !important;\n  outline-offset: 2px;\n}\n\n.sticky-notes-anchor {\n  outline: 2px solid #e0b400 !important;\n  outline-offset: 2px;\n}\n\n.sticky-notes-leaders {\n  position: absolute;\n  left: 0;\n  top: 0;\n  z-index: 2147482900;\n  pointer-events: none;\n  overflow: visible;\n}\n\n.sticky-note {\n  position: absolute;\n  z-index: 2147482920;\n  width: 240px;\n  height: 110px;\n  min-width: 160px;\n  min-height: 72px;\n  display: flex;\n  flex-direction: column;\n  box-sizing: border-box;\n  resize: both;\n  overflow: hidden;\n  margin: 0;\n  background: #fff3b0;\n  color: #1e2430;\n  border: 1px solid #d9b93c;\n  border-radius: 0;\n  box-shadow: 2px 3px 0 rgba(0, 0, 0, 0.18);\n  padding: 6px 8px 8px;\n  font: 12px/1.4 "IBM Plex Sans", system-ui, sans-serif;\n  text-align: left;\n}\n\n.sticky-note[hidden],\n.sticky-notes-export[hidden] {\n  display: none !important;\n}\n\n.sticky-note--dragging {\n  box-shadow: 6px 8px 0 rgba(0, 0, 0, 0.22);\n  opacity: 0.95;\n}\n\n.sticky-note__header {\n  display: flex;\n  align-items: center;\n  gap: 6px;\n  margin: 0 0 4px;\n  padding: 0;\n  font: 600 11px "IBM Plex Mono", ui-monospace, Menlo, monospace;\n  color: #6b5a12;\n  cursor: grab;\n  user-select: none;\n  touch-action: none;\n}\n\n.sticky-note--dragging .sticky-note__header {\n  cursor: grabbing;\n}\n\n.sticky-note__index {\n  background: #1e2430;\n  color: #fff3b0;\n  border-radius: 9px;\n  padding: 0 6px;\n  font: inherit;\n}\n\n.sticky-note__path {\n  flex: 1;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n  font: inherit;\n  font-size: 10px;\n  background: none;\n  color: inherit;\n  padding: 0;\n}\n\n.sticky-note__button {\n  all: unset;\n  color: #6b5a12;\n  padding: 0 4px;\n  cursor: pointer;\n  font-size: 14px;\n  line-height: 18px;\n}\n\n.sticky-note__button[data-command="remove"] {\n  font-weight: 700;\n  border: 1px solid transparent;\n}\n\n.sticky-note__button[data-command="remove"]:hover {\n  color: #fff;\n  background: #b3261e;\n  border-color: #b3261e;\n}\n\n.sticky-note__text {\n  all: unset;\n  display: block;\n  flex: 1;\n  width: 100%;\n  box-sizing: border-box;\n  min-height: 0;\n  color: inherit;\n  font: inherit;\n  white-space: pre-wrap;\n  overflow: auto;\n}\n\n.sticky-note-badge {\n  position: absolute;\n  z-index: 2147482910;\n  background: #1e2430;\n  color: #fff3b0;\n  font: 700 10px "IBM Plex Mono", ui-monospace, Menlo, monospace;\n  border-radius: 9px;\n  padding: 0 5px;\n  line-height: 16px;\n  cursor: pointer;\n}\n\n.sticky-notes-export {\n  position: fixed;\n  left: 16px;\n  right: 16px;\n  bottom: 64px;\n  max-height: 40vh;\n  overflow: auto;\n  z-index: 2147482930;\n  margin: 0;\n  background: var(--card, #fff);\n  color: var(--ink, #1e2430);\n  border: 1px solid var(--line, #c8ccd4);\n  padding: 12px;\n  font: 12px "IBM Plex Mono", ui-monospace, Menlo, monospace;\n  white-space: pre-wrap;\n  text-align: left;\n}\n\n.sticky-notes-snap {\n  position: fixed;\n  inset: 0;\n  z-index: 2147482940;\n  cursor: crosshair;\n  touch-action: none;\n  user-select: none;\n}\n\n.sticky-notes-snap__rect {\n  position: fixed;\n  border: 1px dashed #e0b400;\n  background: rgba(224, 180, 0, 0.08);\n  box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.35);\n  pointer-events: none;\n}\n\n.sticky-notes-snap__rect[hidden] {\n  display: none !important;\n}\n';
+const css = '/* Injected once at mount as <style id="sticky-notes-style">.\n   `all: unset` on controls and a z-index near the maximum keep the layer intact\n   on host pages with aggressive CSS. Host pages may lack a [hidden] reset, so we\n   ship our own. */\n\n.sticky-notes-bar {\n  position: fixed;\n  right: 16px;\n  bottom: 16px;\n  z-index: 2147482930;\n  display: flex;\n  gap: 6px;\n  align-items: center;\n  background: var(--card, #fff);\n  color: var(--ink, #1e2430);\n  border: 1px solid var(--line, #c8ccd4);\n  padding: 6px 8px;\n  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);\n  font: 12px "IBM Plex Mono", ui-monospace, Menlo, monospace;\n}\n\n.sticky-notes-bar__button {\n  all: unset;\n  cursor: pointer;\n  padding: 6px 10px;\n  border: 1px solid var(--line, #c8ccd4);\n  font: inherit;\n  line-height: 1;\n  white-space: nowrap;\n}\n\n.sticky-notes-bar__button:disabled {\n  opacity: 0.4;\n  cursor: default;\n}\n\n.sticky-notes-bar__button:hover:not(:disabled) {\n  background: rgba(0, 0, 0, 0.06);\n}\n\n.sticky-notes-bar__button[aria-pressed="true"] {\n  background: #e0b400;\n  color: #1e2430;\n  border-color: #e0b400;\n}\n\n.sticky-notes-bar__count {\n  opacity: 0.6;\n  min-width: 3ch;\n  text-align: center;\n}\n\n.sticky-notes-bar__message {\n  opacity: 0.6;\n}\n\nbody.sticky-notes-picking,\nbody.sticky-notes-picking * {\n  cursor: crosshair !important;\n}\n\n.sticky-notes-hover {\n  outline: 2px dashed #e0b400 !important;\n  outline-offset: 2px;\n}\n\n.sticky-notes-anchor {\n  outline: 2px solid #e0b400 !important;\n  outline-offset: 2px;\n}\n\n.sticky-notes-leaders {\n  position: absolute;\n  left: 0;\n  top: 0;\n  z-index: 2147482900;\n  pointer-events: none;\n  overflow: visible;\n}\n\n.sticky-note {\n  position: absolute;\n  z-index: 2147482920;\n  width: 240px;\n  height: 110px;\n  min-width: 160px;\n  min-height: 72px;\n  display: flex;\n  flex-direction: column;\n  box-sizing: border-box;\n  resize: both;\n  overflow: hidden;\n  margin: 0;\n  background: #fff3b0;\n  color: #1e2430;\n  border: 1px solid #d9b93c;\n  border-radius: 0;\n  box-shadow: 2px 3px 0 rgba(0, 0, 0, 0.18);\n  padding: 6px 8px 8px;\n  font: 12px/1.4 "IBM Plex Sans", system-ui, sans-serif;\n  text-align: left;\n}\n\n.sticky-note[hidden],\n.sticky-notes-export[hidden] {\n  display: none !important;\n}\n\n.sticky-note--dragging {\n  box-shadow: 6px 8px 0 rgba(0, 0, 0, 0.22);\n  opacity: 0.95;\n}\n\n.sticky-note__header {\n  display: flex;\n  align-items: center;\n  gap: 6px;\n  margin: 0 0 4px;\n  padding: 0;\n  font: 600 11px "IBM Plex Mono", ui-monospace, Menlo, monospace;\n  color: #6b5a12;\n  cursor: grab;\n  user-select: none;\n  touch-action: none;\n}\n\n.sticky-note--dragging .sticky-note__header {\n  cursor: grabbing;\n}\n\n.sticky-note__index {\n  background: #1e2430;\n  color: #fff3b0;\n  border-radius: 9px;\n  padding: 0 6px;\n  font: inherit;\n}\n\n.sticky-note__path {\n  flex: 1;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n  font: inherit;\n  font-size: 10px;\n  background: none;\n  color: inherit;\n  padding: 0;\n}\n\n.sticky-note__button {\n  all: unset;\n  color: #6b5a12;\n  padding: 0 4px;\n  cursor: pointer;\n  font-size: 14px;\n  line-height: 18px;\n}\n\n.sticky-note__button[data-command="remove"] {\n  font-weight: 700;\n  border: 1px solid transparent;\n}\n\n.sticky-note__button[data-command="remove"]:hover {\n  color: #fff;\n  background: #b3261e;\n  border-color: #b3261e;\n}\n\n.sticky-note__text {\n  all: unset;\n  display: block;\n  flex: 1;\n  width: 100%;\n  box-sizing: border-box;\n  min-height: 0;\n  color: inherit;\n  font: inherit;\n  white-space: pre-wrap;\n  overflow: auto;\n}\n\n.sticky-note-badge {\n  position: absolute;\n  z-index: 2147482910;\n  background: #1e2430;\n  color: #fff3b0;\n  font: 700 10px "IBM Plex Mono", ui-monospace, Menlo, monospace;\n  border-radius: 9px;\n  padding: 0 5px;\n  line-height: 16px;\n  cursor: pointer;\n}\n\n.sticky-notes-export {\n  position: fixed;\n  left: 16px;\n  right: 16px;\n  bottom: 64px;\n  max-height: 40vh;\n  overflow: auto;\n  z-index: 2147482930;\n  margin: 0;\n  background: var(--card, #fff);\n  color: var(--ink, #1e2430);\n  border: 1px solid var(--line, #c8ccd4);\n  padding: 12px;\n  font: 12px "IBM Plex Mono", ui-monospace, Menlo, monospace;\n  white-space: pre-wrap;\n  text-align: left;\n}\n\n.sticky-notes-screenshot {\n  position: fixed;\n  inset: 0;\n  z-index: 2147482940;\n  cursor: crosshair;\n  touch-action: none;\n  user-select: none;\n}\n\n.sticky-notes-screenshot__rect {\n  position: fixed;\n  border: 1px dashed #e0b400;\n  background: rgba(224, 180, 0, 0.08);\n  box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.35);\n  pointer-events: none;\n}\n\n.sticky-notes-screenshot__rect[hidden] {\n  display: none !important;\n}\n';
 const NOTE_WIDTH = 240;
 const NOTE_HEIGHT = 110;
 const GAP = 24;
@@ -1729,12 +1729,12 @@ async function domToBlob(node, options) {
   log.timeEnd("canvas to blob");
   return blob;
 }
-const OVERLAY_CLASS = "sticky-notes-snap";
-const RECT_CLASS = "sticky-notes-snap__rect";
+const OVERLAY_CLASS = "sticky-notes-screenshot";
+const RECT_CLASS = "sticky-notes-screenshot__rect";
 const ESCAPE_KEY$1 = "Escape";
 const MIN_SIZE = 8;
 const PNG = "image/png";
-const FILE_PREFIX = "snap";
+const FILE_PREFIX = "screenshot";
 const EXCLUDED = ["sticky-notes-bar", "sticky-notes-export", OVERLAY_CLASS];
 function selectRect(doc) {
   const view = doc.defaultView;
@@ -1804,7 +1804,7 @@ function captureRect(doc, { x, y, w, h }) {
     filter: (node) => !EXCLUDED.some((cls) => node.classList?.contains(cls))
   });
 }
-const snapFileName = (key, n) => `${slug(key)}-${FILE_PREFIX}-${n}.png`;
+const screenshotFileName = (key, n) => `${slug(key)}-${FILE_PREFIX}-${n}.png`;
 const slug = (key) => String(key).replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "page";
 function download(doc, blob, name) {
   const view = doc.defaultView;
@@ -1836,17 +1836,21 @@ const NOTE_CLASS = "sticky-note";
 const BADGE_CLASS = "sticky-note-badge";
 const DRAGGING_CLASS = "sticky-note--dragging";
 const TOGGLE_COMMAND = "toggle";
-const SNAP_COMMAND = "snap";
+const SCREENSHOT_COMMAND = "screenshot";
+const DOWNLOAD_COMMAND = "download";
 const EXPORT_MARKDOWN_COMMAND = "export-markdown";
 const EXPORT_JSON_COMMAND = "export-json";
 const CLEAR_COMMAND = "clear";
 const COLLAPSE_COMMAND = "collapse";
 const REMOVE_COMMAND = "remove";
 const TOGGLE_LABEL = "✎ Notes";
-const SNAP_LABEL = "▭ Snap";
-const SNAP_HINT = "drag a rectangle · Esc cancels";
+const SCREENSHOT_LABEL = "▭ Screenshot";
+const DOWNLOAD_LABEL = "Download";
+const SCREENSHOT_HINT = "drag a rectangle · Esc cancels";
 const RENDERING_MESSAGE = "rendering…";
-const SNAP_FAILED_MESSAGE = "snap failed";
+const SCREENSHOT_FAILED_MESSAGE = "screenshot failed";
+const COPIED_MESSAGE$1 = "copied";
+const NOT_COPIED_MESSAGE = "captured (clipboard blocked)";
 const MARKDOWN_LABEL = "Copy Markdown";
 const JSON_LABEL = "Copy JSON";
 const CLEAR_LABEL = "Clear";
@@ -1873,7 +1877,9 @@ function createLayer({ root, key, onPick, onChange, onRemove, onClear, onExport 
   let picking = false;
   let hovered = null;
   let messageTimer = 0;
-  let snapCount = 0;
+  let screenshotCount = 0;
+  let lastScreenshot = null;
+  let downloadButton = null;
   function mount2() {
     injectStyle();
     buildChrome();
@@ -1900,12 +1906,14 @@ function createLayer({ root, key, onPick, onChange, onRemove, onClear, onExport 
     bar.innerHTML = `
       <button class="sticky-notes-bar__button" type="button" data-command="${TOGGLE_COMMAND}" aria-pressed="false">${TOGGLE_LABEL}</button>
       <span class="sticky-notes-bar__count">0</span>
-      <button class="sticky-notes-bar__button" type="button" data-command="${SNAP_COMMAND}">${SNAP_LABEL}</button>
+      <button class="sticky-notes-bar__button" type="button" data-command="${SCREENSHOT_COMMAND}">${SCREENSHOT_LABEL}</button>
+      <button class="sticky-notes-bar__button" type="button" data-command="${DOWNLOAD_COMMAND}" disabled>${DOWNLOAD_LABEL}</button>
       <button class="sticky-notes-bar__button" type="button" data-command="${EXPORT_MARKDOWN_COMMAND}">${MARKDOWN_LABEL}</button>
       <button class="sticky-notes-bar__button" type="button" data-command="${EXPORT_JSON_COMMAND}">${JSON_LABEL}</button>
       <button class="sticky-notes-bar__button" type="button" data-command="${CLEAR_COMMAND}">${CLEAR_LABEL}</button>
       <span class="sticky-notes-bar__message"></span>`;
     toggleButton = bar.querySelector(`[data-command="${TOGGLE_COMMAND}"]`);
+    downloadButton = bar.querySelector(`[data-command="${DOWNLOAD_COMMAND}"]`);
     countEl = bar.querySelector(".sticky-notes-bar__count");
     messageEl = bar.querySelector(".sticky-notes-bar__message");
     exportPane = doc.createElement("pre");
@@ -1923,7 +1931,8 @@ function createLayer({ root, key, onPick, onChange, onRemove, onClear, onExport 
     const command = event.target.closest("[data-command]")?.dataset.command;
     if (!command) return;
     if (command === TOGGLE_COMMAND) setPicking(!picking);
-    if (command === SNAP_COMMAND) snap();
+    if (command === SCREENSHOT_COMMAND) screenshot();
+    if (command === DOWNLOAD_COMMAND) downloadLast();
     if (command === EXPORT_MARKDOWN_COMMAND) onExport(MARKDOWN);
     if (command === EXPORT_JSON_COMMAND) onExport(JSON_FORMAT);
     if (command === CLEAR_COMMAND) onClear();
@@ -1965,23 +1974,28 @@ function createLayer({ root, key, onPick, onChange, onRemove, onClear, onExport 
     view.clearTimeout(messageTimer);
     messageTimer = view.setTimeout(() => messageEl.textContent = "", MESSAGE_MS);
   }
-  async function snap(rect = null) {
+  async function screenshot(rect = null) {
     setPicking(false);
-    if (!rect) message(SNAP_HINT);
+    if (!rect) message(SCREENSHOT_HINT);
     const area = rect ?? await selectRect(doc);
     if (!area) return null;
     message(RENDERING_MESSAGE);
     try {
       const blob = await captureRect(doc, area);
-      const name = snapFileName(key, ++snapCount);
-      download(doc, blob, name);
+      lastScreenshot = { blob, name: screenshotFileName(key, ++screenshotCount) };
+      downloadButton.disabled = false;
       const copied = await copyImage(view, blob);
-      message(copied ? `${name} saved + copied` : `${name} saved`);
+      message(copied ? COPIED_MESSAGE$1 : NOT_COPIED_MESSAGE);
       return blob;
     } catch (error) {
-      message(SNAP_FAILED_MESSAGE);
+      message(SCREENSHOT_FAILED_MESSAGE);
       throw error;
     }
+  }
+  function downloadLast() {
+    if (!lastScreenshot) return;
+    download(doc, lastScreenshot.blob, lastScreenshot.name);
+    message(lastScreenshot.name);
   }
   function showExport(text) {
     exportPane.textContent = text;
@@ -2137,7 +2151,7 @@ function createLayer({ root, key, onPick, onChange, onRemove, onClear, onExport 
     focusNote,
     message,
     showExport,
-    snap,
+    screenshot,
     get picking() {
       return picking;
     }
@@ -2229,13 +2243,13 @@ function createStickyNotes(options = {}) {
       () => layer?.message(COPY_FAILED_MESSAGE)
     );
   }
-  const snap = (rect) => layer?.snap(rect) ?? Promise.resolve(null);
+  const screenshot = (rect) => layer?.screenshot(rect) ?? Promise.resolve(null);
   const instance = {
     mount: mount2,
     unmount,
     refresh,
     toggle,
-    snap,
+    screenshot,
     export: exportNotes,
     clear,
     get notes() {

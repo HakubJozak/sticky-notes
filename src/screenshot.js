@@ -4,12 +4,12 @@
    differ from the screen. Good enough to hand an agent visual context. */
 import { domToBlob } from "modern-screenshot"
 
-const OVERLAY_CLASS = "sticky-notes-snap"
-const RECT_CLASS = "sticky-notes-snap__rect"
+const OVERLAY_CLASS = "sticky-notes-screenshot"
+const RECT_CLASS = "sticky-notes-screenshot__rect"
 const ESCAPE_KEY = "Escape"
 const MIN_SIZE = 8 // px; anything smaller was a click, not a drag
 const PNG = "image/png"
-const FILE_PREFIX = "snap"
+const FILE_PREFIX = "screenshot"
 
 // Our own chrome must not show up in the picture; notes and badges stay.
 const EXCLUDED = ["sticky-notes-bar", "sticky-notes-export", OVERLAY_CLASS]
@@ -101,7 +101,7 @@ export function captureRect(doc, { x, y, w, h }) {
   })
 }
 
-export const snapFileName = (key, n) => `${slug(key)}-${FILE_PREFIX}-${n}.png`
+export const screenshotFileName = (key, n) => `${slug(key)}-${FILE_PREFIX}-${n}.png`
 
 const slug = (key) => String(key).replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "page"
 

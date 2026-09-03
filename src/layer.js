@@ -5,7 +5,7 @@ import css from "./style.css?inline"
 import { LAYER_SELECTOR } from "./path.js"
 import { MARKDOWN, JSON_FORMAT } from "./exporter.js"
 import { DEFAULT_BOX, placeNote, placeBadge, leaderEnds } from "./geometry.js"
-import { selectRect, captureRect, snapFileName, download, copyImage } from "./snap.js"
+import { selectRect, captureRect, screenshotFileName, download, copyImage } from "./screenshot.js"
 
 const STYLE_ID = "sticky-notes-style"
 const SVG_NS = "http://www.w3.org/2000/svg"
@@ -20,7 +20,8 @@ const BADGE_CLASS = "sticky-note-badge"
 const DRAGGING_CLASS = "sticky-note--dragging"
 
 const TOGGLE_COMMAND = "toggle"
-const SNAP_COMMAND = "snap"
+const SCREENSHOT_COMMAND = "screenshot"
+const DOWNLOAD_COMMAND = "download"
 const EXPORT_MARKDOWN_COMMAND = "export-markdown"
 const EXPORT_JSON_COMMAND = "export-json"
 const CLEAR_COMMAND = "clear"
@@ -28,10 +29,13 @@ const COLLAPSE_COMMAND = "collapse"
 const REMOVE_COMMAND = "remove"
 
 const TOGGLE_LABEL = "✎ Notes"
-const SNAP_LABEL = "▭ Snap"
-const SNAP_HINT = "drag a rectangle · Esc cancels"
+const SCREENSHOT_LABEL = "▭ Screenshot"
+const DOWNLOAD_LABEL = "Download"
+const SCREENSHOT_HINT = "drag a rectangle · Esc cancels"
 const RENDERING_MESSAGE = "rendering…"
-const SNAP_FAILED_MESSAGE = "snap failed"
+const SCREENSHOT_FAILED_MESSAGE = "screenshot failed"
+const COPIED_MESSAGE = "copied"
+const NOT_COPIED_MESSAGE = "captured (clipboard blocked)"
 const MARKDOWN_LABEL = "Copy Markdown"
 const JSON_LABEL = "Copy JSON"
 const CLEAR_LABEL = "Clear"
@@ -61,7 +65,9 @@ export function createLayer({ root, key, onPick, onChange, onRemove, onClear, on
   let picking = false
   let hovered = null
   let messageTimer = 0
-  let snapCount = 0
+  let screenshotCount = 0
+  let lastScreenshot = null // { blob, name } — Download saves it
+  let downloadButton = null
 
   function mount() {
     injectStyle()
@@ -93,12 +99,14 @@ export function createLayer({ root, key, onPick, onChange, onRemove, onClear, on
     bar.innerHTML = `
       <button class="sticky-notes-bar__button" type="button" data-command="${TOGGLE_COMMAND}" aria-pressed="false">${TOGGLE_LABEL}</button>
       <span class="sticky-notes-bar__count">0</span>
-      <button class="sticky-notes-bar__button" type="button" data-command="${SNAP_COMMAND}">${SNAP_LABEL}</button>
+      <button class="sticky-notes-bar__button" type="button" data-command="${SCREENSHOT_COMMAND}">${SCREENSHOT_LABEL}</button>
+      <button class="sticky-notes-bar__button" type="button" data-command="${DOWNLOAD_COMMAND}" disabled>${DOWNLOAD_LABEL}</button>
       <button class="sticky-notes-bar__button" type="button" data-command="${EXPORT_MARKDOWN_COMMAND}">${MARKDOWN_LABEL}</button>
       <button class="sticky-notes-bar__button" type="button" data-command="${EXPORT_JSON_COMMAND}">${JSON_LABEL}</button>
       <button class="sticky-notes-bar__button" type="button" data-command="${CLEAR_COMMAND}">${CLEAR_LABEL}</button>
       <span class="sticky-notes-bar__message"></span>`
     toggleButton = bar.querySelector(`[data-command="${TOGGLE_COMMAND}"]`)
+    downloadButton = bar.querySelector(`[data-command="${DOWNLOAD_COMMAND}"]`)
     countEl = bar.querySelector(".sticky-notes-bar__count")
     messageEl = bar.querySelector(".sticky-notes-bar__message")
 
@@ -123,7 +131,8 @@ export function createLayer({ root, key, onPick, onChange, onRemove, onClear, on
     if (!command) return
 
     if (command === TOGGLE_COMMAND) setPicking(!picking)
-    if (command === SNAP_COMMAND) snap()
+    if (command === SCREENSHOT_COMMAND) screenshot()
+    if (command === DOWNLOAD_COMMAND) downloadLast()
     if (command === EXPORT_MARKDOWN_COMMAND) onExport(MARKDOWN)
     if (command === EXPORT_JSON_COMMAND) onExport(JSON_FORMAT)
     if (command === CLEAR_COMMAND) onClear()
@@ -179,10 +188,11 @@ export function createLayer({ root, key, onPick, onChange, onRemove, onClear, on
     messageTimer = view.setTimeout(() => (messageEl.textContent = ""), MESSAGE_MS)
   }
 
-  // rect omitted → interactive marquee; given → capture straight away (agents, tests)
-  async function snap(rect = null) {
+  // rect omitted → interactive marquee; given → capture straight away (agents, tests).
+  // Copies to the clipboard; saving to disk is the Download button's job.
+  async function screenshot(rect = null) {
     setPicking(false)
-    if (!rect) message(SNAP_HINT)
+    if (!rect) message(SCREENSHOT_HINT)
 
     const area = rect ?? (await selectRect(doc))
     if (!area) return null
@@ -191,16 +201,23 @@ export function createLayer({ root, key, onPick, onChange, onRemove, onClear, on
 
     try {
       const blob = await captureRect(doc, area)
-      const name = snapFileName(key, ++snapCount)
-      download(doc, blob, name)
+      lastScreenshot = { blob, name: screenshotFileName(key, ++screenshotCount) }
+      downloadButton.disabled = false
       const copied = await copyImage(view, blob)
-      message(copied ? `${name} saved + copied` : `${name} saved`)
+      message(copied ? COPIED_MESSAGE : NOT_COPIED_MESSAGE)
 
       return blob
     } catch (error) {
-      message(SNAP_FAILED_MESSAGE)
+      message(SCREENSHOT_FAILED_MESSAGE)
       throw error
     }
+  }
+
+  function downloadLast() {
+    if (!lastScreenshot) return
+
+    download(doc, lastScreenshot.blob, lastScreenshot.name)
+    message(lastScreenshot.name)
   }
 
   function showExport(text) {
@@ -397,7 +414,7 @@ export function createLayer({ root, key, onPick, onChange, onRemove, onClear, on
     focusNote,
     message,
     showExport,
-    snap,
+    screenshot,
     get picking() {
       return picking
     },

@@ -119,14 +119,14 @@ export function createStickyNotes(options = {}) {
   }
 
   // rect = { x, y, w, h } in page px; omit it for the interactive marquee. → Blob | null
-  const snap = (rect) => layer?.snap(rect) ?? Promise.resolve(null)
+  const screenshot = (rect) => layer?.screenshot(rect) ?? Promise.resolve(null)
 
   const instance = {
     mount,
     unmount,
     refresh,
     toggle,
-    snap,
+    screenshot,
     export: exportNotes,
     clear,
     get notes() {

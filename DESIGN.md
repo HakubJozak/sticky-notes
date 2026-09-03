@@ -40,7 +40,7 @@ instance = {
   mount(), unmount(), refresh(),   // refresh = re-anchor after the host swapped DOM
   toggle(on?),                     // picking mode
   export(format)                   // "markdown" | "json" → string (also copies + shows pane)
-  snap(rect?)                      // { x, y, w, h } page px → Promise<Blob>; no rect = drag a marquee
+  screenshot(rect?)                // { x, y, w, h } page px → Promise<Blob>; no rect = drag a marquee
   clear(),
   get notes()                      // readonly array of note records
 }
@@ -61,7 +61,7 @@ Note record: `{ id, path, anchored, text, ctx, note, created, dx, dy, w, h, coll
 | `exporter.js` | `toMarkdown(rows, { title, url })`, `toJson(...)`; every continuation line indented to the bullet width |
 | `layer.js` | DOM: bar, export pane, leaders SVG, note boxes, badges; drag/resize; picking mode listeners (AbortController) |
 | `geometry.js` | `anchorOf`, `initialOffset`, `placeNote`, `placeBadge`, leader endpoints |
-| `snap.js` | `selectRect(doc)` marquee → page rect; `captureRect(doc, rect)` DOM re-render via modern-screenshot (document shifted by `translate(-x,-y)`, clipped to w×h); `download`, `copyImage` |
+| `screenshot.js` | `selectRect(doc)` marquee → page rect; `captureRect(doc, rect)` DOM re-render via modern-screenshot (document shifted by `translate(-x,-y)`, clipped to w×h); `download`, `copyImage` |
 | `stimulus.js` | `export default class StickyNotesController extends Controller` (see below) |
 | `turbo.js` | `attach(selector)` — mount into `[data-sticky-notes]`, re-mount on `turbo:load`, unmount on `turbo:before-cache`; listeners registered once per page |
 | `style.css` | all styles, classes below |
@@ -80,12 +80,13 @@ string constants.
 | note | `.sticky-note`, `.sticky-note--dragging`, `.sticky-note__header`, `.sticky-note__index`, `.sticky-note__path`, `.sticky-note__button` (`data-command="collapse"` / `"remove"`), `.sticky-note__text` (textarea) |
 | badge | `.sticky-note-badge` |
 | host states | `body.sticky-notes-picking` (crosshair), `.sticky-notes-hover` (dashed outline), `.sticky-notes-anchor` (solid outline on noted element) |
-| snap marquee | `.sticky-notes-snap` (fixed full-viewport overlay), `.sticky-notes-snap__rect` (dims outside via box-shadow) |
+| screenshot marquee | `.sticky-notes-screenshot` (fixed full-viewport overlay), `.sticky-notes-screenshot__rect` (dims outside via box-shadow) |
 
-Bar buttons carry `data-command="toggle" | "snap" | "export-markdown" | "export-json" | "clear"`.
-A snap downloads `<key-slug>-snap-<n>.png` and copies the image to the clipboard
-when the browser allows it. Bar, export pane and overlay are filtered out of the
-render; notes and badges stay in the picture on purpose.
+Bar buttons carry `data-command="toggle" | "screenshot" | "download" | "export-markdown" | "export-json" | "clear"`.
+Screenshot copies the image to the clipboard when the browser allows it and
+enables Download, which saves the last capture as `<key-slug>-screenshot-<n>.png`.
+Bar, export pane and overlay are filtered out of the render; notes and badges
+stay in the picture on purpose.
 Never use `data-action` (Stimulus parses it inside the controller element).
 All layer nodes carry `data-turbo-temporary`. Use `all: unset` on buttons and
 textarea so host CSS cannot leak in; z-index near the max; `[hidden]` must
