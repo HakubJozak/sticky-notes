@@ -5,7 +5,7 @@ import css from "./style.css?inline"
 import { LAYER_SELECTOR } from "./path.js"
 import { MARKDOWN, JSON_FORMAT } from "./exporter.js"
 import { DEFAULT_BOX, placeNote, placeBadge, leaderEnds } from "./geometry.js"
-import { selectRect, captureRect, screenshotFileName, download, copyImage } from "./screenshot.js"
+import { selectRect, captureRect, toPng, screenshotFileName, download, copyImage } from "./screenshot.js"
 
 const STYLE_ID = "sticky-notes-style"
 const SVG_NS = "http://www.w3.org/2000/svg"
@@ -200,7 +200,8 @@ export function createLayer({ root, key, onPick, onChange, onRemove, onClear, on
     message(RENDERING_MESSAGE)
 
     try {
-      const blob = await captureRect(doc, area)
+      const canvas = await captureRect(doc, area)
+      const blob = await toPng(canvas)
       lastScreenshot = { blob, name: screenshotFileName(key, ++screenshotCount) }
       downloadButton.disabled = false
       const copied = await copyImage(view, blob)

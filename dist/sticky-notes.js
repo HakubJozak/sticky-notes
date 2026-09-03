@@ -117,6 +117,7 @@ const EMPTY_TEXT = "—";
 const EMPTY_NOTE = "(no comment)";
 const ORPHAN_FLAG = "(element not found on this version of the page)";
 const UNANCHORED_FLAG = "(unanchored — give the container an id)";
+const SCREENSHOT_LINE = "screenshot: ";
 const JSON_INDENT = 2;
 function toMarkdown(rows, { title = "", url = "" } = {}) {
   return [`# Notes on ${title}`, url, "", ...rows.flatMap(markdownRow)].join("\n");
@@ -132,6 +133,7 @@ function markdownRow(row) {
     `${pad}> ${row.text || EMPTY_TEXT}`,
     ...row.ctx ? [`${pad}under: ${row.ctx}`] : [],
     ...comment.split("\n").map((line) => pad + line),
+    ...(row.shots ?? []).map((path) => `${pad}${SCREENSHOT_LINE}${path}`),
     ""
   ];
 }
@@ -184,93 +186,9 @@ function leaderEnds(el, box) {
   if (x === anchor.x && y === anchor.y) return null;
   return { from: anchor, to: { x, y } };
 }
-function changeJpegDpi(uint8Array, dpi) {
-  uint8Array[13] = 1;
-  uint8Array[14] = dpi >> 8;
-  uint8Array[15] = dpi & 255;
-  uint8Array[16] = dpi >> 8;
-  uint8Array[17] = dpi & 255;
-  return uint8Array;
-}
-const _P = "p".charCodeAt(0);
-const _H = "H".charCodeAt(0);
-const _Y = "Y".charCodeAt(0);
-const _S = "s".charCodeAt(0);
-let pngDataTable;
-function createPngDataTable() {
-  const crcTable = new Int32Array(256);
-  for (let n = 0; n < 256; n++) {
-    let c = n;
-    for (let k = 0; k < 8; k++) {
-      c = c & 1 ? 3988292384 ^ c >>> 1 : c >>> 1;
-    }
-    crcTable[n] = c;
-  }
-  return crcTable;
-}
-function calcCrc(uint8Array) {
-  let c = -1;
-  if (!pngDataTable)
-    pngDataTable = createPngDataTable();
-  for (let n = 0; n < uint8Array.length; n++) {
-    c = pngDataTable[(c ^ uint8Array[n]) & 255] ^ c >>> 8;
-  }
-  return c ^ -1;
-}
-function searchStartOfPhys(uint8Array) {
-  const length = uint8Array.length - 1;
-  for (let i = length; i >= 4; i--) {
-    if (uint8Array[i - 4] === 9 && uint8Array[i - 3] === _P && uint8Array[i - 2] === _H && uint8Array[i - 1] === _Y && uint8Array[i] === _S) {
-      return i - 3;
-    }
-  }
-  return 0;
-}
-function changePngDpi(uint8Array, dpi, overwritepHYs = false) {
-  const physChunk = new Uint8Array(13);
-  dpi *= 39.3701;
-  physChunk[0] = _P;
-  physChunk[1] = _H;
-  physChunk[2] = _Y;
-  physChunk[3] = _S;
-  physChunk[4] = dpi >>> 24;
-  physChunk[5] = dpi >>> 16;
-  physChunk[6] = dpi >>> 8;
-  physChunk[7] = dpi & 255;
-  physChunk[8] = physChunk[4];
-  physChunk[9] = physChunk[5];
-  physChunk[10] = physChunk[6];
-  physChunk[11] = physChunk[7];
-  physChunk[12] = 1;
-  const crc = calcCrc(physChunk);
-  const crcChunk = new Uint8Array(4);
-  crcChunk[0] = crc >>> 24;
-  crcChunk[1] = crc >>> 16;
-  crcChunk[2] = crc >>> 8;
-  crcChunk[3] = crc & 255;
-  if (overwritepHYs) {
-    const startingIndex = searchStartOfPhys(uint8Array);
-    uint8Array.set(physChunk, startingIndex);
-    uint8Array.set(crcChunk, startingIndex + 13);
-    return uint8Array;
-  } else {
-    const chunkLength = new Uint8Array(4);
-    chunkLength[0] = 0;
-    chunkLength[1] = 0;
-    chunkLength[2] = 0;
-    chunkLength[3] = 9;
-    const finalHeader = new Uint8Array(54);
-    finalHeader.set(uint8Array, 0);
-    finalHeader.set(chunkLength, 33);
-    finalHeader.set(physChunk, 37);
-    finalHeader.set(crcChunk, 50);
-    return finalHeader;
-  }
-}
 const PREFIX = "[modern-screenshot]";
 const IN_BROWSER = typeof window !== "undefined";
 const SUPPORT_WEB_WORKER = IN_BROWSER && "Worker" in window;
-const SUPPORT_ATOB = IN_BROWSER && "atob" in window;
 const USER_AGENT = IN_BROWSER ? window.navigator?.userAgent : "";
 const IN_CHROME = USER_AGENT.includes("Chrome");
 const IN_SAFARI = USER_AGENT.includes("AppleWebKit") && !IN_CHROME;
@@ -342,50 +260,18 @@ function svgToDataUrl(svg, removeControlCharacter) {
   }
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(xhtml)}`;
 }
-async function canvasToBlob(canvas, type = "image/png", quality = 1) {
-  try {
-    return await new Promise((resolve, reject) => {
-      canvas.toBlob((blob) => {
-        if (blob) {
-          resolve(blob);
-        } else {
-          reject(new Error("Blob is null"));
-        }
-      }, type, quality);
-    });
-  } catch (error) {
-    if (SUPPORT_ATOB) {
-      return dataUrlToBlob(canvas.toDataURL(type, quality));
-    }
-    throw error;
-  }
-}
-function dataUrlToBlob(dataUrl) {
-  const [header, base64] = dataUrl.split(",");
-  const type = header.match(/data:(.+);/)?.[1] ?? void 0;
-  const decoded = window.atob(base64);
-  const length = decoded.length;
-  const buffer = new Uint8Array(length);
-  for (let i = 0; i < length; i += 1) {
-    buffer[i] = decoded.charCodeAt(i);
-  }
-  return new Blob([buffer], { type });
-}
 function readBlob(blob, type) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);
     reader.onerror = () => reject(reader.error);
     reader.onabort = () => reject(new Error(`Failed read blob to ${type}`));
-    if (type === "dataUrl") {
+    {
       reader.readAsDataURL(blob);
-    } else if (type === "arrayBuffer") {
-      reader.readAsArrayBuffer(blob);
     }
   });
 }
 const blobToDataUrl = (blob) => readBlob(blob, "dataUrl");
-const blobToArrayBuffer = (blob) => readBlob(blob, "arrayBuffer");
 function createImage(url, ownerDocument) {
   const img = getDocument(ownerDocument).createElement("img");
   img.decoding = "sync";
@@ -1709,26 +1595,8 @@ async function domToCanvas(node, options) {
   const image = createImage(dataUrl, svg.ownerDocument);
   return await imageToCanvas(image, context);
 }
-async function domToBlob(node, options) {
-  const context = await orCreateContext(node, options);
-  const { log, type, quality, dpi } = context;
-  const canvas = await domToCanvas(context);
-  log.time("canvas to blob");
-  const blob = await canvasToBlob(canvas, type, quality);
-  if (["image/png", "image/jpeg"].includes(type) && dpi) {
-    const arrayBuffer = await blobToArrayBuffer(blob.slice(0, 33));
-    let uint8Array = new Uint8Array(arrayBuffer);
-    if (type === "image/png") {
-      uint8Array = changePngDpi(uint8Array, dpi);
-    } else if (type === "image/jpeg") {
-      uint8Array = changeJpegDpi(uint8Array, dpi);
-    }
-    log.timeEnd("canvas to blob");
-    return new Blob([uint8Array, blob.slice(33)], { type });
-  }
-  log.timeEnd("canvas to blob");
-  return blob;
-}
+const FALLBACK = "page";
+const slug = (key) => String(key).replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || FALLBACK;
 const OVERLAY_CLASS = "sticky-notes-screenshot";
 const RECT_CLASS = "sticky-notes-screenshot__rect";
 const ESCAPE_KEY$1 = "Escape";
@@ -1795,8 +1663,7 @@ function selectRect(doc) {
 }
 function captureRect(doc, { x, y, w, h }) {
   const view = doc.defaultView;
-  return domToBlob(doc.documentElement, {
-    type: PNG,
+  return domToCanvas(doc.documentElement, {
     width: w,
     height: h,
     scale: view.devicePixelRatio || 1,
@@ -1804,8 +1671,8 @@ function captureRect(doc, { x, y, w, h }) {
     filter: (node) => !EXCLUDED.some((cls) => node.classList?.contains(cls))
   });
 }
+const toPng = (canvas) => new Promise((resolve) => canvas.toBlob(resolve, PNG));
 const screenshotFileName = (key, n) => `${slug(key)}-${FILE_PREFIX}-${n}.png`;
-const slug = (key) => String(key).replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "page";
 function download(doc, blob, name) {
   const view = doc.defaultView;
   const url = view.URL.createObjectURL(blob);
@@ -1981,7 +1848,8 @@ function createLayer({ root, key, onPick, onChange, onRemove, onClear, onExport 
     if (!area) return null;
     message(RENDERING_MESSAGE);
     try {
-      const blob = await captureRect(doc, area);
+      const canvas = await captureRect(doc, area);
+      const blob = await toPng(canvas);
       lastScreenshot = { blob, name: screenshotFileName(key, ++screenshotCount) };
       downloadButton.disabled = false;
       const copied = await copyImage(view, blob);

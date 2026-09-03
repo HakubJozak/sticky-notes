@@ -2,7 +2,7 @@
    through modern-screenshot (DOM → SVG foreignObject → canvas). It is a
    re-render, not a screenshot: fonts, cross-origin images and exotic CSS can
    differ from the screen. Good enough to hand an agent visual context. */
-import { domToBlob } from "modern-screenshot"
+import { domToCanvas } from "modern-screenshot"
 import { slug } from "./slug.js"
 
 const OVERLAY_CLASS = "sticky-notes-screenshot"
@@ -10,7 +10,10 @@ const RECT_CLASS = "sticky-notes-screenshot__rect"
 const ESCAPE_KEY = "Escape"
 const MIN_SIZE = 8 // px; anything smaller was a click, not a drag
 const PNG = "image/png"
+const JPEG = "image/jpeg"
 const FILE_PREFIX = "screenshot"
+export const JPEG_MAX_EDGE = 1568 // px; Claude's token cost follows pixel area
+export const JPEG_QUALITY = 0.85
 
 // Our own chrome must not show up in the picture; notes and badges stay.
 const EXCLUDED = ["sticky-notes-bar", "sticky-notes-export", OVERLAY_CLASS]
@@ -92,14 +95,53 @@ export function selectRect(doc) {
 export function captureRect(doc, { x, y, w, h }) {
   const view = doc.defaultView
 
-  return domToBlob(doc.documentElement, {
-    type: PNG,
+  return domToCanvas(doc.documentElement, {
     width: w,
     height: h,
     scale: view.devicePixelRatio || 1,
     style: { transform: `translate(${-x}px, ${-y}px)`, transformOrigin: "top left" },
     filter: (node) => !EXCLUDED.some((cls) => node.classList?.contains(cls)),
   })
+}
+
+// The element's box plus padding, clamped to the document — auto-shot uses it.
+export function captureElement(doc, el, padding = 0) {
+  const view = doc.defaultView
+  const page = doc.documentElement
+  const box = el.getBoundingClientRect()
+  const x = Math.max(0, Math.round(box.left + view.scrollX - padding))
+  const y = Math.max(0, Math.round(box.top + view.scrollY - padding))
+  const w = Math.min(page.scrollWidth - x, Math.round(box.width + 2 * padding))
+  const h = Math.min(page.scrollHeight - y, Math.round(box.height + 2 * padding))
+
+  return captureRect(doc, { x, y, w, h })
+}
+
+export const toPng = (canvas) => new Promise((resolve) => canvas.toBlob(resolve, PNG))
+
+// CSS scale (device pixels divided by dpr), long edge capped, JPEG → base64.
+export async function toJpeg(canvas, { maxEdge = JPEG_MAX_EDGE, quality = JPEG_QUALITY } = {}) {
+  const doc = canvas.ownerDocument
+  const view = doc.defaultView
+  const dpr = view.devicePixelRatio || 1
+  const cssWidth = canvas.width / dpr
+  const cssHeight = canvas.height / dpr
+  const factor = Math.min(1, maxEdge / Math.max(cssWidth, cssHeight))
+
+  const out = doc.createElement("canvas")
+  out.width = Math.round(cssWidth * factor)
+  out.height = Math.round(cssHeight * factor)
+  out.getContext("2d").drawImage(canvas, 0, 0, out.width, out.height)
+
+  const blob = await new Promise((resolve) => out.toBlob(resolve, JPEG, quality))
+  const dataUrl = await new Promise((resolve, reject) => {
+    const reader = new view.FileReader()
+    reader.onload = () => resolve(reader.result)
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(blob)
+  })
+
+  return dataUrl.slice(dataUrl.indexOf(",") + 1)
 }
 
 export const screenshotFileName = (key, n) => `${slug(key)}-${FILE_PREFIX}-${n}.png`
