@@ -1975,10 +1975,10 @@
       exportPane.hidden = true;
       if (!on) unhover();
     }
-    function message(text) {
+    function message(text, ms = MESSAGE_MS) {
       messageEl.textContent = text;
       view.clearTimeout(messageTimer);
-      messageTimer = view.setTimeout(() => messageEl.textContent = "", MESSAGE_MS);
+      messageTimer = view.setTimeout(() => messageEl.textContent = "", ms);
     }
     async function screenshot(rect = null) {
       setPicking(false);
@@ -2240,11 +2240,14 @@
   const AUTO_SHOT_OFF = "0";
   const AUTO_SHOT_PADDING = 16;
   const SENT_MESSAGE = "sent";
+  const SENDING_MESSAGE = "sending…";
+  const CAPTURING_MESSAGE = "capturing…";
   const QUEUED_MESSAGE = "queued for the next review session";
   const PICK_SESSION_MESSAGE = "pick a session first";
   const NO_DAEMON_MESSAGE = "no daemon";
   const SEND_FAILED_MESSAGE = "send failed";
   const LOST_MESSAGE = (n) => `${n} screenshots lost`;
+  const ERROR_MESSAGE_MS = 4e3;
   const TOKEN_PROMPT = "sticky-notes daemon token (from ~/.cache/sticky-notes/daemon.json)";
   function createStickyNotes(options = {}) {
     const key = options.key ?? location.pathname;
@@ -2258,6 +2261,7 @@
     let root = null;
     let channel = resolveChannel(options.channel);
     let autoShot = readAutoShot();
+    let sending = false;
     function resolveChannel(given) {
       if (given && typeof given === "object") return given;
       return detectChannel({ base: given, token: options.channelToken, storage, fetch: fetchFn });
@@ -2361,7 +2365,7 @@
     function reportLost() {
       const lost = Number(read2(PENDING_PREFIX + key)) || 0;
       write2(PENDING_PREFIX + key, "0");
-      if (lost) layer.message(LOST_MESSAGE(lost));
+      if (lost) layer.message(LOST_MESSAGE(lost), ERROR_MESSAGE_MS);
     }
     async function refreshSessions() {
       if (!channel) return;
@@ -2369,7 +2373,7 @@
         const sessions = await channel.sessions();
         layer?.refreshSessions(sessions);
       } catch (error) {
-        layer?.message(`${NO_DAEMON_MESSAGE}: ${error.message}`);
+        layer?.message(`${NO_DAEMON_MESSAGE}: ${error.message}`, ERROR_MESSAGE_MS);
         throw error;
       }
     }
@@ -2391,15 +2395,23 @@
     }
     async function send() {
       if (!channel || !layer) return null;
+      if (sending) {
+        layer.message(SENDING_MESSAGE);
+        return null;
+      }
       const session = layer.session();
       if (!session) {
         layer.message(PICK_SESSION_MESSAGE);
         return null;
       }
+      sending = true;
       try {
         const doc = (root ?? document.body).ownerDocument;
         const rows = notes.map((note, index2) => ({ ...toRow(note, index2), shots: pending.get(note.id) ?? [] }));
-        if (autoShot) await autoShots(doc, rows);
+        if (autoShot) {
+          layer.message(CAPTURING_MESSAGE);
+          await autoShots(doc, rows);
+        }
         const payload = { session, url: doc.defaultView.location.href, key, title: doc.title, notes: rows };
         const result = await channel.send(payload);
         pending.clear();
@@ -2407,8 +2419,10 @@
         layer?.message(result.queued ? QUEUED_MESSAGE : SENT_MESSAGE);
         return result;
       } catch (error) {
-        layer?.message(`${SEND_FAILED_MESSAGE}: ${error.message}`);
+        layer?.message(`${SEND_FAILED_MESSAGE}: ${error.message}`, ERROR_MESSAGE_MS);
         throw error;
+      } finally {
+        sending = false;
       }
     }
     async function autoShots(doc, rows) {

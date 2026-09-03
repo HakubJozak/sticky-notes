@@ -211,10 +211,11 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
     if (!on) unhover()
   }
 
-  function message(text) {
+  // ms: callers pass a longer time for anything the reviewer must actually read.
+  function message(text, ms = MESSAGE_MS) {
     messageEl.textContent = text
     view.clearTimeout(messageTimer)
-    messageTimer = view.setTimeout(() => (messageEl.textContent = ""), MESSAGE_MS)
+    messageTimer = view.setTimeout(() => (messageEl.textContent = ""), ms)
   }
 
   // rect omitted → interactive marquee; given → capture straight away (agents, tests).

@@ -118,6 +118,32 @@ describe("send", () => {
     expect(channel.sent[0].notes).toEqual([])
   })
 
+  it("sends one payload at a time", async () => {
+    let release
+    const deferred = {
+      sent: [],
+      sessions: async () => [{ id: "s1", cwd: "/p", label: "p" }],
+      send: async (payload) => {
+        deferred.sent.push(payload)
+        await new Promise((resolve) => (release = resolve))
+        return { delivered: true }
+      },
+    }
+    const one = createStickyNotes({ key: "/one", storage, channel: deferred }).mount()
+    one.setAutoShot(false)
+    await tick()
+
+    const first = one.send()
+
+    expect(await one.send()).toBeNull()
+    expect([...document.querySelectorAll(".sticky-notes-bar__message")].at(-1).textContent).toBe("sending…")
+
+    release()
+    expect(await first).toEqual({ delivered: true })
+    expect(deferred.sent).toHaveLength(1)
+    one.unmount()
+  })
+
   it("connects the direct path from a pasted token", () => {
     const bare = createStickyNotes({ key: "/file", storage, channel: null, fetch: async () => new Response("[]") }).mount()
     bare.connect("t0ken")

@@ -17,11 +17,14 @@ const AUTO_SHOT_KEY = "sticky-notes:auto-shot"
 const AUTO_SHOT_OFF = "0"
 const AUTO_SHOT_PADDING = 16 // px around the noted element
 const SENT_MESSAGE = "sent"
+const SENDING_MESSAGE = "sending…"
+const CAPTURING_MESSAGE = "capturing…"
 const QUEUED_MESSAGE = "queued for the next review session"
 const PICK_SESSION_MESSAGE = "pick a session first"
 const NO_DAEMON_MESSAGE = "no daemon"
 const SEND_FAILED_MESSAGE = "send failed"
 const LOST_MESSAGE = (n) => `${n} screenshots lost`
+const ERROR_MESSAGE_MS = 4000 // failures stay up long enough to read
 const TOKEN_PROMPT = "sticky-notes daemon token (from ~/.cache/sticky-notes/daemon.json)"
 
 export function createStickyNotes(options = {}) {
@@ -37,6 +40,7 @@ export function createStickyNotes(options = {}) {
   let root = null
   let channel = resolveChannel(options.channel)
   let autoShot = readAutoShot()
+  let sending = false
 
   function resolveChannel(given) {
     if (given && typeof given === "object") return given
@@ -159,7 +163,7 @@ export function createStickyNotes(options = {}) {
   function reportLost() {
     const lost = Number(read(PENDING_PREFIX + key)) || 0
     write(PENDING_PREFIX + key, "0")
-    if (lost) layer.message(LOST_MESSAGE(lost))
+    if (lost) layer.message(LOST_MESSAGE(lost), ERROR_MESSAGE_MS)
   }
 
   async function refreshSessions() {
@@ -169,7 +173,7 @@ export function createStickyNotes(options = {}) {
       const sessions = await channel.sessions()
       layer?.refreshSessions(sessions) // the host may have unmounted us meanwhile
     } catch (error) {
-      layer?.message(`${NO_DAEMON_MESSAGE}: ${error.message}`)
+      layer?.message(`${NO_DAEMON_MESSAGE}: ${error.message}`, ERROR_MESSAGE_MS)
       throw error
     }
   }
@@ -198,6 +202,13 @@ export function createStickyNotes(options = {}) {
   async function send() {
     if (!channel || !layer) return null
 
+    // A second Send while the first is in flight would capture and post the
+    // same notes twice — the daemon has no idea they are the same batch.
+    if (sending) {
+      layer.message(SENDING_MESSAGE)
+      return null
+    }
+
     const session = layer.session()
     if (!session) {
       layer.message(PICK_SESSION_MESSAGE)
@@ -206,10 +217,16 @@ export function createStickyNotes(options = {}) {
 
     // capture and payload building are inside the try: a failed auto-shot must
     // reach the reviewer as "send failed", not as a silent rejected promise
+    sending = true
+
     try {
       const doc = (root ?? document.body).ownerDocument
       const rows = notes.map((note, index) => ({ ...toRow(note, index), shots: pending.get(note.id) ?? [] }))
-      if (autoShot) await autoShots(doc, rows)
+
+      if (autoShot) {
+        layer.message(CAPTURING_MESSAGE) // capturing every noted element takes seconds
+        await autoShots(doc, rows)
+      }
 
       const payload = { session, url: doc.defaultView.location.href, key, title: doc.title, notes: rows }
       const result = await channel.send(payload)
@@ -219,8 +236,10 @@ export function createStickyNotes(options = {}) {
 
       return result
     } catch (error) {
-      layer?.message(`${SEND_FAILED_MESSAGE}: ${error.message}`)
+      layer?.message(`${SEND_FAILED_MESSAGE}: ${error.message}`, ERROR_MESSAGE_MS)
       throw error
+    } finally {
+      sending = false
     }
   }
 
