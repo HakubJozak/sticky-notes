@@ -285,7 +285,7 @@ claude-review --resume &lt;id&gt;   # the session you just left (id printed at e
     <tr><td><b>published artifact</b> (claude.ai)</td><td>Copy Markdown, as today</td><td>no: the viewer sandbox blocks fetch to every host, loopback included</td><td>Download</td><td><b>out of v1.</b> A later version can use the artifact database, see below</td></tr>
 </table>
   </div>
-  <p>The overlay decides at mount: <code>data-channel</code> present → Rails path; a daemon token in localStorage → direct path; otherwise no Send button. The Markdown body is identical everywhere, so the skill's "reading the export" section holds for all of them.</p>
+  <p>The overlay decides at mount: <code>data-channel</code> present → Rails path (Connect is never offered there: the daemon lives on the app's machine, not the browser's); a daemon token in localStorage → direct path; otherwise no Send button. The Markdown body is identical everywhere, so the skill's "reading the export" section holds for all of them.</p>
   <h3>Artifacts later: the database mailbox</h3>
   <p>A published artifact cannot reach the daemon, but claude.ai attaches a small JSON document store to each artifact when it is published with <code>capabilities: {db: {}}</code>. Page code reaches it through <code>claude.use("db")</code>; the Claude Code session reads the same store through the Artifact tool's <code>read_db</code> action, as the owner. That gives a mailbox, not a push:</p>
   <ol>
@@ -329,7 +329,7 @@ claude-review --resume &lt;id&gt;   # the session you just left (id printed at e
   <ul>
     <li><code>GET /sticky-notes/sessions</code>: reads <code>daemon.json</code>, calls the daemon, returns the list ordered for this <code>Rails.root</code>. 503 when the daemon is unreachable.</li>
     <li><code>POST /sticky-notes/notes</code>: forwards the body to the daemon with the token, returns its status and JSON unchanged.</li>
-    <li><code>sticky_notes_tag</code> renders <code>data-channel="/sticky-notes"</code> only when the daemon answered at page load. Both routes exist only when <code>StickyNotes::Rails.channel?</code> (development, or <code>config.sticky_notes.channel = true</code>), and both need the page token.</li>
+    <li><code>sticky_notes_tag</code> renders <code>data-channel="/sticky-notes"</code> and <code>data-channel-token</code> whenever the channel is on — the page, not the render path, discovers whether a daemon answers. Both routes exist only when <code>StickyNotes::Rails.channel?</code> (development, or <code>config.sticky_notes.channel = true</code>), and both need the page token.</li>
   </ul>
   <h3>The event Claude receives</h3>
   <pre><code>&lt;channel source="sticky-notes" url="https://krouzitko.oak.hozak.dev/kids/12" key="/kids/12" count="2"&gt;
@@ -352,7 +352,7 @@ claude-review --resume &lt;id&gt;   # the session you just left (id printed at e
   <table>
     <tr><th>condition</th><th>where it is caught</th><th>what you see</th><th>what happens</th></tr>
     <tr><td>no review session live</td><td>daemon: empty session table</td><td>picker offers only "queue for next review session"</td><td>notes wait in the daemon; or Copy Markdown</td></tr>
-    <tr><td>daemon not running</td><td>Rails: connection refused</td><td>Send disabled, "no daemon"</td><td>the next <code>claude-review</code> spawns it; Copy Markdown meanwhile</td></tr>
+    <tr><td>daemon not running</td><td>the page's own <code>/sessions</code> call, 503 from the engine</td><td>"no daemon: …"; Send hidden, and on an engine page Connect stays hidden too</td><td>the next <code>claude-review</code> spawns it, the next picker open restores Send; Copy Markdown meanwhile</td></tr>
     <tr><td>daemon crashed with sessions live</td><td>MCP servers: socket closed</td><td>nothing until the next Send: "no daemon"</td><td>the first MCP server to retry respawns it — on a missing socket file and on <code>ECONNREFUSED</code>, which is how a stale socket file is replaced — all reconnect and re-register; the in-memory queue is lost</td></tr>
     <tr><td>session ended or crashed</td><td>daemon: socket closed</td><td>row disappears from the picker</td><td>—</td></tr>
     <tr><td>launched with the config but without the channel flag</td><td>cannot happen through the function; by hand Claude Code drops events silently</td><td>"sent", nothing happens</td><td>keep both flags in one function</td></tr>

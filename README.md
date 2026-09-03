@@ -261,7 +261,9 @@ first), **auto-shot** (a JPEG of every noted element rides along; on by
 default) and a count of manually attached ▭ Screenshots.
 
 Rails hosts proxy through the app — remote browsing works, the daemon token
-stays on the machine. The proxy is development-only (`config.sticky_notes.channel
+stays on the machine. The tag always renders the channel in development and the
+page discovers the daemon state itself ("no daemon" and no Send when it is
+down); **Connect** is never offered there. The proxy is development-only (`config.sticky_notes.channel
 = true` opts a staging box in) and every call must carry the per-boot page token
 the tag renders as `data-channel-token`. On a `file://` or static page, **Connect** takes the token from
 `~/.cache/sticky-notes/daemon.json` and posts to the daemon directly.

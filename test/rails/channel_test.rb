@@ -77,7 +77,6 @@ class ChannelTest < Minitest::Test
     get_channel "/sticky-notes/sessions"
 
     assert_equal 503, last_response.status
-    refute_includes PagesController.render(inline: "<%= sticky_notes_tag %>"), "data-channel"
   end
 
   # Without the token a hostile page could post notes into the reviewer's session.
@@ -89,13 +88,13 @@ class ChannelTest < Minitest::Test
     assert_equal 401, last_response.status
   end
 
-  def test_tag_carries_the_channel_only_while_the_daemon_answers
+  # No render-path probe: the page asks the proxy and reports what it finds.
+  def test_tag_carries_the_channel_whether_or_not_a_daemon_answers
+    ENV["STICKY_NOTES_HOME"] = Dir.mktmpdir
+
     html = PagesController.render(inline: "<%= sticky_notes_tag %>")
+
     assert_includes html, 'data-channel="/sticky-notes"'
     assert_includes html, %(data-channel-token="#{StickyNotes::Rails.channel_token}")
-
-    ENV["STICKY_NOTES_HOME"] = Dir.mktmpdir
-    html = PagesController.render(inline: "<%= sticky_notes_tag %>")
-    refute_includes html, "data-channel"
   end
 end

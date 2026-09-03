@@ -34,6 +34,7 @@ export function createStickyNotes(options = {}) {
   const store = createStore(storage, key)
   const fetchFn = options.fetch ?? globalThis.fetch?.bind(globalThis)
   const pending = new Map() // note id → [jpeg base64], until sent
+  const engineChannel = typeof options.channel === "string" // the app proxies to its own machine's daemon
 
   let notes = []
   let layer = null
@@ -166,15 +167,24 @@ export function createStickyNotes(options = {}) {
     if (lost) layer.message(LOST_MESSAGE(lost), ERROR_MESSAGE_MS)
   }
 
+  // The engine renders its channel unconditionally; this is where the page
+  // finds out whether a daemon is behind it, and says so.
   async function refreshSessions() {
     if (!channel) return
 
     try {
       const sessions = await channel.sessions()
       layer?.refreshSessions(sessions) // the host may have unmounted us meanwhile
+      if (engineChannel) layer?.setChannel(true) // a daemon came back: Send returns
     } catch (error) {
+      // the bar message and the hidden controls are the report; every caller
+      // (mount, picker focus, connect) drops the promise, so a rethrow here
+      // could only ever surface as an unhandled rejection
       layer?.message(`${NO_DAEMON_MESSAGE}: ${error.message}`, ERROR_MESSAGE_MS)
-      throw error
+      if (!engineChannel) return // file:// page: Connect is still the way back
+
+      layer?.setConnectAllowed(false) // before setChannel, or Connect flashes into view
+      layer?.setChannel(false)
     }
   }
 

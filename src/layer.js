@@ -84,6 +84,7 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
   let autoShotInput = null
   let lastFocusedId = null // the note a fresh screenshot belongs to
   let channelOn = false // no channel → screenshots go to the clipboard, as before
+  let connectAllowed = true // false on engine pages: their daemon is not the browser's
 
   function mount() {
     injectStyle()
@@ -446,11 +447,17 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
     live.get(id)?.box.querySelector(".sticky-note__text")?.focus()
   }
 
-  // Send is useless without a daemon; Connect is the way to get one.
+  // Send is useless without a daemon; Connect is the way to get one, except
+  // where the daemon lives on the app's machine rather than the browser's.
   function setChannel(on) {
     channelOn = on
     for (const node of bar.querySelectorAll(`[${SEND_ATTRIBUTE}]`)) node.hidden = !on
-    for (const node of bar.querySelectorAll(`[${CONNECT_ATTRIBUTE}]`)) node.hidden = on
+    for (const node of bar.querySelectorAll(`[${CONNECT_ATTRIBUTE}]`)) node.hidden = on || !connectAllowed
+  }
+
+  function setConnectAllowed(allowed) {
+    connectAllowed = allowed
+    setChannel(channelOn)
   }
 
   const indexOf = (id) => notes.findIndex((note) => note.id === id) + 1
@@ -470,6 +477,7 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
     showExport,
     screenshot,
     setChannel,
+    setConnectAllowed,
     session,
     refreshSessions,
     elementOf,

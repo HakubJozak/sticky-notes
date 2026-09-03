@@ -120,7 +120,7 @@ every note that carries one. Meta is `url`, `key`, `count`.
 | session picker | live review sessions, this app's own first; a single live session picks itself, `queue` never does. The choice is remembered per page key |
 | auto-shot (on by default) | on Send, every noted element without a manual shot is captured as a JPEG (1568 px cap) so you see what the note points at |
 | ▭ Screenshot with a note focused | attaches to that note ("attached to #3") instead of the clipboard; the bar counts pending shots and a reload loses them ("2 screenshots lost") |
-| Connect | `file://` and static pages only: the reviewer pastes the token from `~/.cache/sticky-notes/daemon.json` and the page posts to the daemon directly. Rails pages proxy through the app and need no token |
+| Connect | `file://` and static pages only: the reviewer pastes the token from `~/.cache/sticky-notes/daemon.json` and the page posts to the daemon directly. Rails pages proxy through the app, always render the channel in development and discover the daemon themselves — no Connect, no token to paste |
 | Esc | leave note mode |
 
 Namespace `.sticky-notes-bar`, `.sticky-note`, `.sticky-note-badge`, etc. —

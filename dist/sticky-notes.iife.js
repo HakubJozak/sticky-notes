@@ -1873,6 +1873,7 @@
     let autoShotInput = null;
     let lastFocusedId = null;
     let channelOn = false;
+    let connectAllowed = true;
     function mount2() {
       injectStyle();
       buildChrome();
@@ -2161,7 +2162,11 @@
     function setChannel(on) {
       channelOn = on;
       for (const node of bar.querySelectorAll(`[${SEND_ATTRIBUTE}]`)) node.hidden = !on;
-      for (const node of bar.querySelectorAll(`[${CONNECT_ATTRIBUTE}]`)) node.hidden = on;
+      for (const node of bar.querySelectorAll(`[${CONNECT_ATTRIBUTE}]`)) node.hidden = on || !connectAllowed;
+    }
+    function setConnectAllowed(allowed) {
+      connectAllowed = allowed;
+      setChannel(channelOn);
     }
     const indexOf = (id) => notes.findIndex((note) => note.id === id) + 1;
     const session = () => picker.value;
@@ -2179,6 +2184,7 @@
       showExport,
       screenshot,
       setChannel,
+      setConnectAllowed,
       session,
       refreshSessions,
       elementOf,
@@ -2256,6 +2262,7 @@
     const store = createStore(storage, key);
     const fetchFn = options.fetch ?? globalThis.fetch?.bind(globalThis);
     const pending = /* @__PURE__ */ new Map();
+    const engineChannel = typeof options.channel === "string";
     let notes = [];
     let layer = null;
     let root = null;
@@ -2372,9 +2379,12 @@
       try {
         const sessions = await channel.sessions();
         layer?.refreshSessions(sessions);
+        if (engineChannel) layer?.setChannel(true);
       } catch (error) {
         layer?.message(`${NO_DAEMON_MESSAGE}: ${error.message}`, ERROR_MESSAGE_MS);
-        throw error;
+        if (!engineChannel) return;
+        layer?.setConnectAllowed(false);
+        layer?.setChannel(false);
       }
     }
     function attachScreenshot(id, jpeg) {

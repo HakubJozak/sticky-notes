@@ -128,6 +128,8 @@ Bar buttons carry `data-command="toggle" | "screenshot" | "download" | "send" | 
 The channel controls (Send, picker, auto-shot, shots) carry `data-send` and
 Connect carries `data-connect`; `setChannel(on)` shows one set and hides the
 other, so a page without a daemon shows neither Send nor a picker.
+`setConnectAllowed(false)` keeps Connect hidden as well — engine pages, whose
+daemon is the app's, not the browser's.
 Screenshot copies the image to the clipboard when the browser allows it and
 enables Download, which saves the last capture as `<key-slug>-screenshot-<n>.png`.
 Bar, export pane and overlay are filtered out of the render; notes and badges
@@ -163,7 +165,7 @@ attach()                       // default selector "[data-sticky-notes]"
 
 Mounts the singleton into the element with `key: el.dataset.key`,
 `channel: el.dataset.channel` and `channelToken: el.dataset.channelToken` (the
-engine renders `data-channel` only while a daemon answers). Turbo
+engine renders both whenever the channel is on). Turbo
 re-evaluates inline body module scripts on every visit, so `attach()` runs many
 times per page: a module-level flag registers the listeners once, and every call
 just re-mounts (the host element is a new node after each visit). Without Turbo
@@ -188,8 +190,10 @@ as: "sticky_notes" }` when enabled, so a host edits nothing but its layout.
   (never `asset` — `asset_path` is an ActionView helper).
 - `sticky_notes_tag(key: nil, anchors: nil)` → the `[data-sticky-notes]` div plus
   an inline `<script type="module">` calling `attach()`. Not `data-turbo-temporary`.
-  Adds `data-channel="/sticky-notes"` and `data-channel-token` while the daemon
-  answers, so a page loaded without one shows no Send.
+  Adds `data-channel="/sticky-notes"` and `data-channel-token` whenever
+  `channel?`, with no daemon probe in the render path: the page calls
+  `/sessions` itself, hides Send on failure and shows it again when a later
+  call succeeds. Connect is never offered on such a page.
 - `StickyNotes::Rails::Daemon` — http.rb (gem dep `http >= 5`), 2 s global
   timeout so a wedged daemon cannot stall a page render, `Unreachable` for
   every transport error. `sessions(root:)` orders the daemon's list for this

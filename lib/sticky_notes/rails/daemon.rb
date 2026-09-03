@@ -22,12 +22,6 @@ module StickyNotes
         @info_path = File.join(home, INFO_FILE)
       end
 
-      def alive?
-        request(:get, SESSIONS).status.success?
-      rescue Unreachable
-        false
-      end
-
       # cwd == root first, then ancestors of root (closest first), then the rest.
       def sessions(root:)
         response = request(:get, SESSIONS)

@@ -4,8 +4,10 @@ module StickyNotesHelper
   def sticky_notes_tag(key: nil, anchors: nil)
     return unless StickyNotes::Rails.enabled?
 
-    # one loopback call per page load; connection refused is instant when the daemon is down
-    channel = sticky_notes.sessions_path.delete_suffix(StickyNotes::Rails::Daemon::SESSIONS) if StickyNotes::Rails.channel? && StickyNotes::Rails.daemon.alive?
+    # No daemon probe here: the page asks the proxy itself and reports what it
+    # finds. A probe only ever hid the channel and offered Connect instead —
+    # which would paste a loopback token into an app origin.
+    channel = sticky_notes.sessions_path.delete_suffix(StickyNotes::Rails::Daemon::SESSIONS) if StickyNotes::Rails.channel?
 
     render "sticky_notes/tag", key:, anchors:, channel:, channel_token: (StickyNotes::Rails.channel_token if channel)
   end

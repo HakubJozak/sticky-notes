@@ -118,6 +118,22 @@ describe("send", () => {
     expect(channel.sent[0].notes).toEqual([])
   })
 
+  // The engine renders the channel whether or not a daemon answers, and its
+  // daemon is not the browser's — Connect would send the reviewer nowhere.
+  it("hides Send and Connect on an engine page with no daemon", async () => {
+    const engine = createStickyNotes({
+      key: "/engine", storage, channel: "/sticky-notes", channelToken: "page-token",
+      fetch: async () => new Response("", { status: 503 }),
+    }).mount()
+    await tick()
+
+    const bar = [...document.querySelectorAll(".sticky-notes-bar")].at(-1)
+    expect(bar.querySelector('[data-command="send"]').hidden).toBe(true)
+    expect(bar.querySelector('[data-command="connect"]').hidden).toBe(true)
+    expect(bar.querySelector(".sticky-notes-bar__message").textContent).toMatch(/^no daemon: /)
+    engine.unmount()
+  })
+
   it("sends one payload at a time", async () => {
     let release
     const deferred = {
