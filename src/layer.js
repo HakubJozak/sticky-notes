@@ -263,6 +263,7 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
 
   function render(nextNotes) {
     notes = nextNotes
+    if (!notes.some((note) => note.id === lastFocusedId)) lastFocusedId = null // removed, cleared or never there
     clearNodes()
     notes.forEach(renderNote)
     countEl.textContent = notes.length
@@ -330,10 +331,7 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
     })
     text.addEventListener("focus", () => (lastFocusedId = note.id))
 
-    box.querySelector(`[data-command="${REMOVE_COMMAND}"]`).addEventListener("click", () => {
-      if (lastFocusedId === note.id) lastFocusedId = null
-      onRemove(note)
-    })
+    box.querySelector(`[data-command="${REMOVE_COMMAND}"]`).addEventListener("click", () => onRemove(note))
     box.querySelector(`[data-command="${COLLAPSE_COMMAND}"]`).addEventListener("click", () => {
       note.collapsed = true
       onChange()

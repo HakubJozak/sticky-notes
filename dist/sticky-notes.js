@@ -2013,6 +2013,7 @@ function createLayer({ root, key, storage, onPick, onChange, onRemove, onClear, 
   }
   function render(nextNotes) {
     notes = nextNotes;
+    if (!notes.some((note) => note.id === lastFocusedId)) lastFocusedId = null;
     clearNodes();
     notes.forEach(renderNote);
     countEl.textContent = notes.length;
@@ -2068,10 +2069,7 @@ function createLayer({ root, key, storage, onPick, onChange, onRemove, onClear, 
       onChange();
     });
     text.addEventListener("focus", () => lastFocusedId = note.id);
-    box.querySelector(`[data-command="${REMOVE_COMMAND}"]`).addEventListener("click", () => {
-      if (lastFocusedId === note.id) lastFocusedId = null;
-      onRemove(note);
-    });
+    box.querySelector(`[data-command="${REMOVE_COMMAND}"]`).addEventListener("click", () => onRemove(note));
     box.querySelector(`[data-command="${COLLAPSE_COMMAND}"]`).addEventListener("click", () => {
       note.collapsed = true;
       onChange();
@@ -2319,6 +2317,7 @@ function createStickyNotes(options = {}) {
   function onRemove(note) {
     notes = notes.filter((candidate) => candidate !== note);
     save();
+    prunePending();
     rerender();
   }
   function clear() {
@@ -2327,6 +2326,7 @@ function createStickyNotes(options = {}) {
     if (!view?.confirm?.(`Delete ${notes.length} notes?`)) return;
     notes = [];
     save();
+    prunePending();
     rerender();
   }
   function exportNotes(format) {
@@ -2372,8 +2372,14 @@ function createStickyNotes(options = {}) {
     }
   }
   function attachScreenshot(id, jpeg) {
-    if (!channel || !id) return;
+    if (!channel || !notes.some((note) => note.id === id)) return;
     pending.set(id, [...pending.get(id) ?? [], jpeg]);
+    countPending();
+  }
+  function prunePending() {
+    for (const id of pending.keys()) {
+      if (!notes.some((note) => note.id === id)) pending.delete(id);
+    }
     countPending();
   }
   function countPending() {
@@ -2382,17 +2388,17 @@ function createStickyNotes(options = {}) {
     layer?.setShots(count);
   }
   async function send() {
-    if (!channel) return null;
+    if (!channel || !layer) return null;
     const session = layer.session();
     if (!session) {
       layer.message(PICK_SESSION_MESSAGE);
       return null;
     }
-    const doc = (root ?? document.body).ownerDocument;
-    const rows = notes.map((note, index2) => ({ ...toRow(note, index2), shots: pending.get(note.id) ?? [] }));
-    if (autoShot) await autoShots(doc, rows);
-    const payload = { session, url: doc.defaultView.location.href, key, title: doc.title, notes: rows };
     try {
+      const doc = (root ?? document.body).ownerDocument;
+      const rows = notes.map((note, index2) => ({ ...toRow(note, index2), shots: pending.get(note.id) ?? [] }));
+      if (autoShot) await autoShots(doc, rows);
+      const payload = { session, url: doc.defaultView.location.href, key, title: doc.title, notes: rows };
       const result = await channel.send(payload);
       pending.clear();
       countPending();
@@ -2404,9 +2410,9 @@ function createStickyNotes(options = {}) {
     }
   }
   async function autoShots(doc, rows) {
-    for (const [index2, note] of notes.entries()) {
-      if (rows[index2].shots.length) continue;
-      const el = layer.elementOf(note.id);
+    for (const [index2, note] of notes.slice().entries()) {
+      if (!rows[index2] || rows[index2].shots.length) continue;
+      const el = layer?.elementOf(note.id);
       if (!el) continue;
       rows[index2].shots = [await toJpeg(await captureElement(doc, el, AUTO_SHOT_PADDING))];
     }

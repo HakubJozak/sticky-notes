@@ -80,6 +80,44 @@ describe("send", () => {
     lost.unmount()
   })
 
+  it("reports a failed capture instead of sending half a payload", async () => {
+    const shooting = memoryChannel()
+    const auto = createStickyNotes({ key: "/auto", storage, channel: shooting }).mount()
+    auto.setAutoShot(true) // jsdom has no canvas, so the capture throws for real
+    await tick()
+
+    auto.toggle(true)
+    document.getElementById("save").dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }))
+
+    await expect(auto.send()).rejects.toThrow()
+    expect(shooting.sent).toEqual([])
+    expect([...document.querySelectorAll(".sticky-notes-bar__message")].at(-1).textContent).toMatch(/^send failed: /)
+    auto.unmount()
+  })
+
+  it("forgets the screenshots of notes that are gone", async () => {
+    instance.toggle(true)
+    document.getElementById("save").dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }))
+    const [note] = instance.notes
+    instance.attachScreenshot(note.id, JPEG)
+
+    const confirm = window.confirm
+    window.confirm = () => true
+    try {
+      instance.clear()
+    } finally {
+      window.confirm = confirm
+    }
+
+    expect(document.querySelector(".sticky-notes-bar__shots").textContent).toBe("")
+
+    instance.attachScreenshot(note.id, JPEG) // stale id: that note is gone
+    expect(document.querySelector(".sticky-notes-bar__shots").textContent).toBe("")
+
+    await instance.send()
+    expect(channel.sent[0].notes).toEqual([])
+  })
+
   it("connects the direct path from a pasted token", () => {
     const bare = createStickyNotes({ key: "/file", storage, channel: null, fetch: async () => new Response("[]") }).mount()
     bare.connect("t0ken")

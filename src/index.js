@@ -102,6 +102,7 @@ export function createStickyNotes(options = {}) {
   function onRemove(note) {
     notes = notes.filter((candidate) => candidate !== note)
     save()
+    prunePending()
     rerender()
   }
 
@@ -114,6 +115,7 @@ export function createStickyNotes(options = {}) {
 
     notes = []
     save()
+    prunePending()
     rerender()
   }
 
@@ -173,9 +175,17 @@ export function createStickyNotes(options = {}) {
   }
 
   function attachScreenshot(id, jpeg) {
-    if (!channel || !id) return
+    if (!channel || !notes.some((note) => note.id === id)) return // a cleared note takes its shots with it
 
     pending.set(id, [...(pending.get(id) ?? []), jpeg])
+    countPending()
+  }
+
+  function prunePending() {
+    for (const id of pending.keys()) {
+      if (!notes.some((note) => note.id === id)) pending.delete(id)
+    }
+
     countPending()
   }
 
@@ -186,7 +196,7 @@ export function createStickyNotes(options = {}) {
   }
 
   async function send() {
-    if (!channel) return null
+    if (!channel || !layer) return null
 
     const session = layer.session()
     if (!session) {
@@ -194,13 +204,14 @@ export function createStickyNotes(options = {}) {
       return null
     }
 
-    const doc = (root ?? document.body).ownerDocument
-    const rows = notes.map((note, index) => ({ ...toRow(note, index), shots: pending.get(note.id) ?? [] }))
-    if (autoShot) await autoShots(doc, rows)
-
-    const payload = { session, url: doc.defaultView.location.href, key, title: doc.title, notes: rows }
-
+    // capture and payload building are inside the try: a failed auto-shot must
+    // reach the reviewer as "send failed", not as a silent rejected promise
     try {
+      const doc = (root ?? document.body).ownerDocument
+      const rows = notes.map((note, index) => ({ ...toRow(note, index), shots: pending.get(note.id) ?? [] }))
+      if (autoShot) await autoShots(doc, rows)
+
+      const payload = { session, url: doc.defaultView.location.href, key, title: doc.title, notes: rows }
       const result = await channel.send(payload)
       pending.clear()
       countPending()
@@ -216,10 +227,11 @@ export function createStickyNotes(options = {}) {
   // Every noted element without a manual screenshot gets one, so Claude sees
   // what the note points at.
   async function autoShots(doc, rows) {
-    for (const [index, note] of notes.entries()) {
-      if (rows[index].shots.length) continue
+    // snapshot: capturing awaits, and a note pinned meanwhile has no row here
+    for (const [index, note] of notes.slice().entries()) {
+      if (!rows[index] || rows[index].shots.length) continue
 
-      const el = layer.elementOf(note.id)
+      const el = layer?.elementOf(note.id)
       if (!el) continue
 
       rows[index].shots = [await toJpeg(await captureElement(doc, el, AUTO_SHOT_PADDING))]
