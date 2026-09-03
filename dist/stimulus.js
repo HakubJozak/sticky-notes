@@ -9,6 +9,8 @@ class stimulus extends Controller {
       key: this.hasKeyValue ? this.keyValue : void 0,
       channel: this.hasChannelValue ? this.channelValue : void 0,
       channelToken: this.hasChannelTokenValue ? this.channelTokenValue : void 0,
+      connect: false,
+      // the daemon lives on the app's machine, not the browser's
       root: this.element
     });
     this.notes.mount();

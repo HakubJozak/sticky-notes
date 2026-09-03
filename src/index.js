@@ -35,6 +35,7 @@ export function createStickyNotes(options = {}) {
   const fetchFn = options.fetch ?? globalThis.fetch?.bind(globalThis)
   const pending = new Map() // note id → [jpeg base64], until sent
   const engineChannel = typeof options.channel === "string" // the app proxies to its own machine's daemon
+  const connectAllowed = options.connect !== false // false from the Rails adapters: not the browser's daemon
 
   let notes = []
   let layer = null
@@ -64,6 +65,7 @@ export function createStickyNotes(options = {}) {
       onSend: send, onShot: attachScreenshot, onAutoShot: setAutoShot, onConnect: () => connect(), onSessionsOpen: refreshSessions,
     })
     layer.mount()
+    layer.setConnectAllowed(connectAllowed) // before setChannel, or Connect flashes into view
     layer.setChannel(!!channel)
     layer.setAutoShot(autoShot)
     reportLost()

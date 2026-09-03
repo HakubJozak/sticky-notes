@@ -2263,6 +2263,7 @@
     const fetchFn = options.fetch ?? globalThis.fetch?.bind(globalThis);
     const pending = /* @__PURE__ */ new Map();
     const engineChannel = typeof options.channel === "string";
+    const connectAllowed = options.connect !== false;
     let notes = [];
     let layer = null;
     let root = null;
@@ -2295,6 +2296,7 @@
         onSessionsOpen: refreshSessions
       });
       layer.mount();
+      layer.setConnectAllowed(connectAllowed);
       layer.setChannel(!!channel);
       layer.setAutoShot(autoShot);
       reportLost();

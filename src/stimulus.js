@@ -11,6 +11,7 @@ export default class extends Controller {
       key: this.hasKeyValue ? this.keyValue : undefined,
       channel: this.hasChannelValue ? this.channelValue : undefined,
       channelToken: this.hasChannelTokenValue ? this.channelTokenValue : undefined,
+      connect: false, // the daemon lives on the app's machine, not the browser's
       root: this.element
     })
     this.notes.mount()

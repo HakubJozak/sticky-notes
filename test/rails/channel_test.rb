@@ -88,6 +88,12 @@ class ChannelTest < Minitest::Test
     assert_equal 401, last_response.status
   end
 
+  # Derived from secret_key_base: every puma worker must accept the same token.
+  def test_the_channel_token_is_stable_hex
+    assert_equal StickyNotes::Rails.channel_token, StickyNotes::Rails.channel_token
+    assert_match(/\A[0-9a-f]{32}\z/, StickyNotes::Rails.channel_token)
+  end
+
   # No render-path probe: the page asks the proxy and reports what it finds.
   def test_tag_carries_the_channel_whether_or_not_a_daemon_answers
     ENV["STICKY_NOTES_HOME"] = Dir.mktmpdir

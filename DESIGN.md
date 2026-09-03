@@ -40,6 +40,7 @@ options = {
                             // object { sessions(), send(payload) }; unset = the direct daemon
                             // when a token is stored, else no channel and no Send
   channelToken: undefined,  // page token for the engine channel (data-channel-token)
+  connect: true,            // false hides Connect for good (the Rails adapters pass it)
   fetch: globalThis.fetch,  // injected in tests
 }
 
@@ -128,8 +129,8 @@ Bar buttons carry `data-command="toggle" | "screenshot" | "download" | "send" | 
 The channel controls (Send, picker, auto-shot, shots) carry `data-send` and
 Connect carries `data-connect`; `setChannel(on)` shows one set and hides the
 other, so a page without a daemon shows neither Send nor a picker.
-`setConnectAllowed(false)` keeps Connect hidden as well — engine pages, whose
-daemon is the app's, not the browser's.
+`setConnectAllowed(false)` keeps Connect hidden as well — every page mounted by
+the Rails adapters, whose daemon is the app's, not the browser's.
 Screenshot copies the image to the clipboard when the browser allows it and
 enables Download, which saves the last capture as `<key-slug>-screenshot-<n>.png`.
 Bar, export pane and overlay are filtered out of the render; notes and badges
@@ -147,7 +148,7 @@ import { createStickyNotes } from "./index.js"
 
 export default class extends Controller {
   static values = { key: String, channel: String, channelToken: String }
-  connect()    { mount into this.element with key; listen turbo:frame-render + turbo:morph → refresh; turbo:before-cache → unmount }
+  connect()    { mount into this.element with key and connect: false; listen turbo:frame-render + turbo:morph → refresh; turbo:before-cache → unmount }
   disconnect() { remove listeners; unmount }
 }
 ```
@@ -164,8 +165,9 @@ attach()                       // default selector "[data-sticky-notes]"
 ```
 
 Mounts the singleton into the element with `key: el.dataset.key`,
-`channel: el.dataset.channel` and `channelToken: el.dataset.channelToken` (the
-engine renders both whenever the channel is on). Turbo
+`channel: el.dataset.channel`, `channelToken: el.dataset.channelToken` and
+`connect: false` (the engine renders both attributes whenever the channel is on;
+Connect belongs to `file://` pages only). Turbo
 re-evaluates inline body module scripts on every visit, so `attach()` runs many
 times per page: a module-level flag registers the listeners once, and every call
 just re-mounts (the host element is a new node after each visit). Without Turbo
@@ -183,8 +185,9 @@ as: "sticky_notes" }` when enabled, so a host edits nothing but its layout.
   development or staging.
 - `StickyNotes::Rails.channel?` — live delivery, `enabled?` and development,
   unless `config.sticky_notes.channel = true` opts a staging box in.
-- `StickyNotes::Rails.channel_token` — `SecureRandom.hex(16)` per boot, rendered
-  into the page and required on every channel call.
+- `StickyNotes::Rails.channel_token` — first 32 hex of
+  `SHA256("sticky-notes:" + secret_key_base)`, rendered into the page and required
+  on every channel call. Derived, not random: every puma worker must accept it.
 - `StickyNotes::AssetsController` (< `ActionController::Base`, CSRF skipped)
   serves `dist/*.js` from the gem with `fresh_when`; route named `script`
   (never `asset` — `asset_path` is an ActionView helper).

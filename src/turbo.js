@@ -34,7 +34,7 @@ const anchorsOf = (el) => el.dataset.anchors?.split(/\s+/).filter(Boolean)
 // The host element is a new node after every visit, so always re-find it.
 function remount() {
   const el = document.querySelector(selector)
-  notes = el ? mount({ root: el, key: el.dataset.key || undefined, anchors: anchorsOf(el), channel: el.dataset.channel, channelToken: el.dataset.channelToken }) : null
+  notes = el ? mount({ root: el, key: el.dataset.key || undefined, anchors: anchorsOf(el), channel: el.dataset.channel, channelToken: el.dataset.channelToken, connect: false }) : null
 
   return notes
 }
