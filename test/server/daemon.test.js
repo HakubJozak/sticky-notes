@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect, beforeEach, afterEach } from "vitest"
 import { spawn } from "node:child_process"
-import { connect } from "node:net"
+import { connect, createServer } from "node:net"
 import { mkdtempSync, rmSync, readFileSync, existsSync, statSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -101,5 +101,22 @@ describe("daemon process", () => {
 
     expect(second.exitCode).toBe(0)
     expect(existsSync(infoFile())).toBe(true)
+  })
+
+  it("exits 0 when it loses the socket-bind race to a peer", async () => {
+    // Simulates two daemons racing to bind: this test's own listener wins,
+    // so the daemon under test must see EADDRINUSE, re-probe, and back off.
+    const holder = createServer((socket) => socket.on("data", () => {}))
+    await new Promise((resolve) => holder.listen(join(home, "daemon.sock"), resolve))
+
+    try {
+      const racer = spawn(process.execPath, [daemonPath()], { env: env(), stdio: "ignore" })
+      await new Promise((resolve) => racer.on("exit", resolve))
+
+      expect(racer.exitCode).toBe(0)
+      expect(existsSync(infoFile())).toBe(false)
+    } finally {
+      await new Promise((resolve) => holder.close(resolve))
+    }
   })
 })

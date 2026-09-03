@@ -25,6 +25,7 @@ const STOP_PATH = "/stop"
 const EXIT_OK = 0
 const EXIT_FAILURE = 1
 const EXIT_GRACE_MS = 50
+const EADDRINUSE = "EADDRINUSE"
 
 const log = (line) => console.log(`${new Date().toISOString()} ${line}`)
 
@@ -40,7 +41,13 @@ export async function start() {
   const socketServer = createSocketServer({ sessions, log })
   const httpServer = createHttpServer({ token, sessions, shots, onStop: () => setImmediate(stop), log })
 
-  await listen(socketServer, sockPath())
+  try {
+    await listen(socketServer, sockPath())
+  } catch (error) {
+    if (error.code !== EADDRINUSE) throw error
+    if (await socketAlive()) return null // lost the bind race: a peer got there first
+    throw error
+  }
   await listen(httpServer, port(), LOOPBACK)
 
   const info = { port: httpServer.address().port, token, pid: process.pid, startedAt: new Date().toISOString() }
