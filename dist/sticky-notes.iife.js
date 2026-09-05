@@ -145,7 +145,7 @@
     if (row.anchored === false) flags += ` ${UNANCHORED_FLAG}`;
     return flags;
   }
-  const css = '/* Injected once at mount as <style id="sticky-notes-style">.\n   `all: unset` on controls and a z-index near the maximum keep the layer intact\n   on host pages with aggressive CSS. Host pages may lack a [hidden] reset, so we\n   ship our own. */\n\n.sticky-notes-bar {\n  position: fixed;\n  right: 16px;\n  bottom: 16px;\n  z-index: 2147482930;\n  display: flex;\n  gap: 6px;\n  align-items: center;\n  background: var(--card, #fff);\n  color: var(--ink, #1e2430);\n  border: 1px solid var(--line, #c8ccd4);\n  padding: 6px 8px;\n  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);\n  font: 12px "IBM Plex Mono", ui-monospace, Menlo, monospace;\n}\n\n.sticky-notes-bar__button {\n  all: unset;\n  cursor: pointer;\n  padding: 6px 10px;\n  border: 1px solid var(--line, #c8ccd4);\n  font: inherit;\n  line-height: 1;\n  white-space: nowrap;\n}\n\n.sticky-notes-bar__button:disabled {\n  opacity: 0.4;\n  cursor: default;\n}\n\n.sticky-notes-bar__button:hover:not(:disabled) {\n  background: rgba(0, 0, 0, 0.06);\n}\n\n.sticky-notes-bar__button[aria-pressed="true"] {\n  background: #e0b400;\n  color: #1e2430;\n  border-color: #e0b400;\n}\n\n.sticky-notes-bar__count {\n  opacity: 0.6;\n  min-width: 3ch;\n  text-align: center;\n}\n\n.sticky-notes-bar__message {\n  opacity: 0.6;\n}\n\n/* `all: unset` on the bar controls beats the UA [hidden] rule — restore it */\n.sticky-notes-bar [hidden] {\n  display: none !important;\n}\n\nbody.sticky-notes-picking,\nbody.sticky-notes-picking * {\n  cursor: crosshair !important;\n}\n\n.sticky-notes-hover {\n  outline: 2px dashed #e0b400 !important;\n  outline-offset: 2px;\n}\n\n.sticky-notes-anchor {\n  outline: 2px solid #e0b400 !important;\n  outline-offset: 2px;\n}\n\n.sticky-notes-leaders {\n  position: absolute;\n  left: 0;\n  top: 0;\n  z-index: 2147482900;\n  pointer-events: none;\n  overflow: visible;\n}\n\n.sticky-note {\n  position: absolute;\n  z-index: 2147482920;\n  width: 240px;\n  height: 110px;\n  min-width: 160px;\n  min-height: 72px;\n  display: flex;\n  flex-direction: column;\n  box-sizing: border-box;\n  resize: both;\n  overflow: hidden;\n  margin: 0;\n  background: #fff3b0;\n  color: #1e2430;\n  border: 1px solid #d9b93c;\n  border-radius: 0;\n  box-shadow: 2px 3px 0 rgba(0, 0, 0, 0.18);\n  padding: 6px 8px 8px;\n  font: 12px/1.4 "IBM Plex Sans", system-ui, sans-serif;\n  text-align: left;\n}\n\n.sticky-note[hidden],\n.sticky-notes-export[hidden] {\n  display: none !important;\n}\n\n.sticky-note--dragging {\n  box-shadow: 6px 8px 0 rgba(0, 0, 0, 0.22);\n  opacity: 0.95;\n}\n\n.sticky-note__header {\n  display: flex;\n  align-items: center;\n  gap: 6px;\n  margin: 0 0 4px;\n  padding: 0;\n  font: 600 11px "IBM Plex Mono", ui-monospace, Menlo, monospace;\n  color: #6b5a12;\n  cursor: grab;\n  user-select: none;\n  touch-action: none;\n}\n\n.sticky-note--dragging .sticky-note__header {\n  cursor: grabbing;\n}\n\n.sticky-note__index {\n  background: #1e2430;\n  color: #fff3b0;\n  border-radius: 9px;\n  padding: 0 6px;\n  font: inherit;\n}\n\n.sticky-note__path {\n  flex: 1;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n  font: inherit;\n  font-size: 10px;\n  background: none;\n  color: inherit;\n  padding: 0;\n}\n\n.sticky-note__button {\n  all: unset;\n  color: #6b5a12;\n  padding: 0 4px;\n  cursor: pointer;\n  font-size: 14px;\n  line-height: 18px;\n}\n\n.sticky-note__button[data-command="remove"] {\n  font-weight: 700;\n  border: 1px solid transparent;\n}\n\n.sticky-note__button[data-command="remove"]:hover {\n  color: #fff;\n  background: #b3261e;\n  border-color: #b3261e;\n}\n\n.sticky-note__text {\n  all: unset;\n  display: block;\n  flex: 1;\n  width: 100%;\n  box-sizing: border-box;\n  min-height: 0;\n  color: inherit;\n  font: inherit;\n  white-space: pre-wrap;\n  overflow: auto;\n}\n\n.sticky-note-badge {\n  position: absolute;\n  z-index: 2147482910;\n  background: #1e2430;\n  color: #fff3b0;\n  font: 700 10px "IBM Plex Mono", ui-monospace, Menlo, monospace;\n  border-radius: 9px;\n  padding: 0 5px;\n  line-height: 16px;\n  cursor: pointer;\n}\n\n.sticky-notes-export {\n  position: fixed;\n  left: 16px;\n  right: 16px;\n  bottom: 64px;\n  max-height: 40vh;\n  overflow: auto;\n  z-index: 2147482930;\n  margin: 0;\n  background: var(--card, #fff);\n  color: var(--ink, #1e2430);\n  border: 1px solid var(--line, #c8ccd4);\n  padding: 12px;\n  font: 12px "IBM Plex Mono", ui-monospace, Menlo, monospace;\n  white-space: pre-wrap;\n  text-align: left;\n}\n\n.sticky-notes-screenshot {\n  position: fixed;\n  inset: 0;\n  z-index: 2147482940;\n  cursor: crosshair;\n  touch-action: none;\n  user-select: none;\n}\n\n.sticky-notes-screenshot__rect {\n  position: fixed;\n  border: 1px dashed #e0b400;\n  background: rgba(224, 180, 0, 0.08);\n  box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.35);\n  pointer-events: none;\n}\n\n.sticky-notes-screenshot__rect[hidden] {\n  display: none !important;\n}\n\n.sticky-notes-bar__picker {\n  all: unset;\n  border: 1px solid var(--line, #c8ccd4);\n  padding: 5px 6px;\n  font: inherit;\n  max-width: 220px;\n  white-space: nowrap;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  cursor: pointer;\n}\n\n.sticky-notes-bar__auto {\n  display: inline-flex;\n  align-items: center;\n  gap: 4px;\n  white-space: nowrap;\n  cursor: pointer;\n}\n\n.sticky-notes-bar__auto input {\n  margin: 0;\n}\n\n.sticky-notes-bar__shots {\n  opacity: 0.7;\n  white-space: nowrap;\n}\n';
+  const css = '/* Injected once at mount as <style id="sticky-notes-style">.\n   `all: unset` on controls and a z-index near the maximum keep the layer intact\n   on host pages with aggressive CSS. Host pages may lack a [hidden] reset, so we\n   ship our own. */\n\n/* The pin is all that shows until the reviewer opens the bar; notes stay visible. */\n.sticky-notes-pin {\n  all: unset;\n  position: fixed;\n  right: 16px;\n  bottom: 16px;\n  z-index: 2147482931;\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  width: 36px;\n  height: 36px;\n  box-sizing: border-box;\n  background: #fff3b0;\n  color: #6b5a12;\n  border: 1px solid #d9b93c;\n  box-shadow: 2px 3px 0 rgba(0, 0, 0, 0.18);\n  cursor: pointer;\n}\n\n.sticky-notes-pin:hover,\n.sticky-notes-pin[aria-expanded="true"] {\n  background: #e0b400;\n  color: #1e2430;\n}\n\n.sticky-notes-pin__count {\n  position: absolute;\n  top: -7px;\n  right: -7px;\n  min-width: 16px;\n  box-sizing: border-box;\n  background: #1e2430;\n  color: #fff3b0;\n  font: 700 10px/16px "IBM Plex Mono", ui-monospace, Menlo, monospace;\n  border-radius: 9px;\n  padding: 0 4px;\n  text-align: center;\n}\n\n.sticky-notes-pin__count[hidden] {\n  display: none !important;\n}\n\n.sticky-notes-bar {\n  position: fixed;\n  right: 60px;\n  bottom: 16px;\n  z-index: 2147482930;\n  display: flex;\n  gap: 6px;\n  align-items: center;\n  background: var(--card, #fff);\n  color: var(--ink, #1e2430);\n  border: 1px solid var(--line, #c8ccd4);\n  padding: 6px 8px;\n  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);\n  font: 12px "IBM Plex Mono", ui-monospace, Menlo, monospace;\n}\n\n.sticky-notes-bar__button {\n  all: unset;\n  cursor: pointer;\n  padding: 6px 10px;\n  border: 1px solid var(--line, #c8ccd4);\n  font: inherit;\n  line-height: 1;\n  white-space: nowrap;\n}\n\n.sticky-notes-bar__button:disabled {\n  opacity: 0.4;\n  cursor: default;\n}\n\n.sticky-notes-bar__button:hover:not(:disabled) {\n  background: rgba(0, 0, 0, 0.06);\n}\n\n.sticky-notes-bar__button[aria-pressed="true"] {\n  background: #e0b400;\n  color: #1e2430;\n  border-color: #e0b400;\n}\n\n.sticky-notes-bar__count {\n  opacity: 0.6;\n  min-width: 3ch;\n  text-align: center;\n}\n\n/* `all: unset` on the bar controls beats the UA [hidden] rule — restore it */\n.sticky-notes-bar[hidden],\n.sticky-notes-bar [hidden] {\n  display: none !important;\n}\n\n/* In-flight Send: a turning ring before the "capturing 2/5" label. */\n.sticky-notes-bar__button--busy::before {\n  content: "";\n  display: inline-block;\n  width: 9px;\n  height: 9px;\n  margin-right: 6px;\n  vertical-align: -1px;\n  border: 1.5px solid currentColor;\n  border-right-color: transparent;\n  border-radius: 50%;\n  animation: sticky-notes-spin 0.8s linear infinite;\n}\n\n@keyframes sticky-notes-spin {\n  to {\n    transform: rotate(360deg);\n  }\n}\n\n/* Quiet status above the pin: what just happened, in the colour of how it went. */\n.sticky-notes-toast {\n  position: fixed;\n  right: 16px;\n  bottom: 60px;\n  z-index: 2147482931;\n  max-width: 320px;\n  padding: 6px 10px;\n  background: var(--card, #fff);\n  color: var(--ink, #1e2430);\n  border: 1px solid var(--line, #c8ccd4);\n  border-left: 3px solid #c8ccd4;\n  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);\n  font: 12px "IBM Plex Mono", ui-monospace, Menlo, monospace;\n  animation: sticky-notes-rise 0.15s ease-out;\n}\n\n.sticky-notes-toast[data-kind="ok"] {\n  border-left-color: #2e8b57;\n}\n\n.sticky-notes-toast[data-kind="error"] {\n  border-left-color: #b3261e;\n}\n\n.sticky-notes-toast[hidden] {\n  display: none !important;\n}\n\n@keyframes sticky-notes-rise {\n  from {\n    opacity: 0;\n    transform: translateY(4px);\n  }\n}\n\n@media (prefers-reduced-motion: reduce) {\n  .sticky-notes-bar__button--busy::before,\n  .sticky-notes-toast {\n    animation: none;\n  }\n}\n\nbody.sticky-notes-picking,\nbody.sticky-notes-picking * {\n  cursor: crosshair !important;\n}\n\n.sticky-notes-hover {\n  outline: 2px dashed #e0b400 !important;\n  outline-offset: 2px;\n}\n\n.sticky-notes-anchor {\n  outline: 2px solid #e0b400 !important;\n  outline-offset: 2px;\n}\n\n.sticky-notes-leaders {\n  position: absolute;\n  left: 0;\n  top: 0;\n  z-index: 2147482900;\n  pointer-events: none;\n  overflow: visible;\n}\n\n.sticky-note {\n  position: absolute;\n  z-index: 2147482920;\n  width: 240px;\n  height: 110px;\n  min-width: 160px;\n  min-height: 72px;\n  display: flex;\n  flex-direction: column;\n  box-sizing: border-box;\n  resize: both;\n  overflow: hidden;\n  margin: 0;\n  background: #fff3b0;\n  color: #1e2430;\n  border: 1px solid #d9b93c;\n  border-radius: 0;\n  box-shadow: 2px 3px 0 rgba(0, 0, 0, 0.18);\n  padding: 6px 8px 8px;\n  font: 12px/1.4 "IBM Plex Sans", system-ui, sans-serif;\n  text-align: left;\n}\n\n.sticky-note[hidden],\n.sticky-notes-export[hidden] {\n  display: none !important;\n}\n\n.sticky-note--dragging {\n  box-shadow: 6px 8px 0 rgba(0, 0, 0, 0.22);\n  opacity: 0.95;\n}\n\n.sticky-note__header {\n  display: flex;\n  align-items: center;\n  gap: 6px;\n  margin: 0 0 4px;\n  padding: 0;\n  font: 600 11px "IBM Plex Mono", ui-monospace, Menlo, monospace;\n  color: #6b5a12;\n  cursor: grab;\n  user-select: none;\n  touch-action: none;\n}\n\n.sticky-note--dragging .sticky-note__header {\n  cursor: grabbing;\n}\n\n.sticky-note__index {\n  background: #1e2430;\n  color: #fff3b0;\n  border-radius: 9px;\n  padding: 0 6px;\n  font: inherit;\n}\n\n.sticky-note__path {\n  flex: 1;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n  font: inherit;\n  font-size: 10px;\n  background: none;\n  color: inherit;\n  padding: 0;\n}\n\n.sticky-note__button {\n  all: unset;\n  color: #6b5a12;\n  padding: 0 4px;\n  cursor: pointer;\n  font-size: 14px;\n  line-height: 18px;\n}\n\n.sticky-note__button[data-command="remove"] {\n  font-weight: 700;\n  border: 1px solid transparent;\n}\n\n.sticky-note__button[data-command="remove"]:hover {\n  color: #fff;\n  background: #b3261e;\n  border-color: #b3261e;\n}\n\n.sticky-note__text {\n  all: unset;\n  display: block;\n  flex: 1;\n  width: 100%;\n  box-sizing: border-box;\n  min-height: 0;\n  color: inherit;\n  font: inherit;\n  white-space: pre-wrap;\n  overflow: auto;\n}\n\n.sticky-note-badge {\n  position: absolute;\n  z-index: 2147482910;\n  background: #1e2430;\n  color: #fff3b0;\n  font: 700 10px "IBM Plex Mono", ui-monospace, Menlo, monospace;\n  border-radius: 9px;\n  padding: 0 5px;\n  line-height: 16px;\n  cursor: pointer;\n}\n\n.sticky-notes-export {\n  position: fixed;\n  left: 16px;\n  right: 16px;\n  bottom: 64px;\n  max-height: 40vh;\n  overflow: auto;\n  z-index: 2147482930;\n  margin: 0;\n  background: var(--card, #fff);\n  color: var(--ink, #1e2430);\n  border: 1px solid var(--line, #c8ccd4);\n  padding: 12px;\n  font: 12px "IBM Plex Mono", ui-monospace, Menlo, monospace;\n  white-space: pre-wrap;\n  text-align: left;\n}\n\n.sticky-notes-screenshot {\n  position: fixed;\n  inset: 0;\n  z-index: 2147482940;\n  cursor: crosshair;\n  touch-action: none;\n  user-select: none;\n}\n\n.sticky-notes-screenshot__rect {\n  position: fixed;\n  border: 1px dashed #e0b400;\n  background: rgba(224, 180, 0, 0.08);\n  box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.35);\n  pointer-events: none;\n}\n\n.sticky-notes-screenshot__rect[hidden] {\n  display: none !important;\n}\n\n.sticky-notes-bar__picker {\n  all: unset;\n  border: 1px solid var(--line, #c8ccd4);\n  padding: 5px 6px;\n  font: inherit;\n  max-width: 220px;\n  white-space: nowrap;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  cursor: pointer;\n}\n\n.sticky-notes-bar__auto {\n  display: inline-flex;\n  align-items: center;\n  gap: 4px;\n  white-space: nowrap;\n  cursor: pointer;\n}\n\n.sticky-notes-bar__auto input {\n  margin: 0;\n}\n\n.sticky-notes-bar__shots {\n  opacity: 0.7;\n  white-space: nowrap;\n}\n';
   const NOTE_WIDTH = 240;
   const NOTE_HEIGHT = 110;
   const GAP = 24;
@@ -1766,7 +1766,7 @@
       const chosen = choose(sessions);
       el.innerHTML = "";
       if (!chosen) el.append(option(NONE, PICK_LABEL, { disabled: true }));
-      for (const session of sessions) el.append(option(session.id, session.label + SEPARATOR + session.cwd));
+      for (const session of sessions) el.append(option(session.id, session.label + SEPARATOR + session.cwd, { label: session.label }));
       el.append(option(QUEUE, QUEUE_LABEL));
       el.value = chosen ?? NONE;
     }
@@ -1775,11 +1775,12 @@
       const remembered = recall();
       return sessions.some((session) => session.id === remembered) ? remembered : null;
     }
-    function option(value, text, { disabled = false } = {}) {
+    function option(value, text, { disabled = false, label = text } = {}) {
       const node = doc.createElement("option");
       node.value = value;
       node.textContent = text;
       node.disabled = disabled;
+      node.dataset.label = label;
       return node;
     }
     function remember(id) {
@@ -1800,13 +1801,23 @@
       refresh,
       get value() {
         return el.value;
+      },
+      // "sent to <label>" reads better than a session id or the full option text
+      get label() {
+        return el.selectedOptions[0]?.dataset.label ?? "";
       }
     };
   }
   const STYLE_ID = "sticky-notes-style";
   const SVG_NS = "http://www.w3.org/2000/svg";
-  const MESSAGE_MS = 1500;
+  const MESSAGE_MS$1 = 1500;
   const ESCAPE_KEY = "Escape";
+  const BAR_STATE_KEY = "sticky-notes:bar";
+  const BAR_OPEN = "open";
+  const BAR_CLOSED = "closed";
+  const INFO = "info";
+  const OK = "ok";
+  const ERROR = "error";
   const PICKING_CLASS = "sticky-notes-picking";
   const HOVER_CLASS = "sticky-notes-hover";
   const ANCHOR_CLASS = "sticky-notes-anchor";
@@ -1824,6 +1835,7 @@
   const SEND_COMMAND = "send";
   const AUTO_SHOT_COMMAND = "auto-shot";
   const CONNECT_COMMAND = "connect";
+  const PIN_COMMAND = "pin";
   const TOGGLE_LABEL = "✎ Notes";
   const SCREENSHOT_LABEL = "▭ Screenshot";
   const DOWNLOAD_LABEL = "Download";
@@ -1840,12 +1852,17 @@
   const DRAG_HINT = "drag to move";
   const NOTE_PLACEHOLDER = "note…";
   const SEND_LABEL = "Send";
+  const PIN_LABEL = "sticky notes";
+  const CAPTURING_LABEL = (done, total) => `capturing ${done}/${total}`;
+  const SENDING_LABEL = "sending…";
   const AUTO_SHOT_LABEL = "auto-shot";
   const CONNECT_LABEL = "Connect";
   const ATTACHED_MESSAGE = (n) => `attached to #${n}`;
   const SHOTS_LABEL = (n) => n ? `${n} shot${n === 1 ? "" : "s"}` : "";
   const SEND_ATTRIBUTE = "data-send";
   const CONNECT_ATTRIBUTE = "data-connect";
+  const BUSY_CLASS = "sticky-notes-bar__button--busy";
+  const PIN_ICON = `<svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M9.5 1.5 14.5 6.5l-1.4 1.4-.7-.7L9.6 10l.2 2.8L8.4 14.2 5.7 11.5 2 15.2l-1.2-1.2 3.7-3.7L1.8 7.6l1.4-1.4 2.8.2 2.8-2.8-.7-.7z"/></svg>`;
   const LEADER_COLOR = "#c9a227";
   const LEADER_WIDTH = 1.5;
   const LEADER_DASH = "2 4";
@@ -1857,9 +1874,12 @@
     let notes = [];
     let controller = null;
     let bar = null;
+    let pin = null;
+    let pinCountEl = null;
+    let toast = null;
+    let sendButton = null;
     let toggleButton = null;
     let countEl = null;
-    let messageEl = null;
     let exportPane = null;
     let leaders = null;
     let picking = false;
@@ -1883,7 +1903,8 @@
       setPicking(false);
       controller.abort();
       clearNodes();
-      for (const node of [bar, exportPane, leaders]) node.remove();
+      view.clearTimeout(messageTimer);
+      for (const node of [pin, bar, toast, exportPane, leaders]) node.remove();
       unhover();
       doc.getElementById(STYLE_ID)?.remove();
     }
@@ -1895,8 +1916,21 @@
       doc.head.appendChild(style);
     }
     function buildChrome() {
+      pin = doc.createElement("button");
+      pin.className = "sticky-notes-pin";
+      pin.type = "button";
+      pin.dataset.command = PIN_COMMAND;
+      pin.title = PIN_LABEL;
+      pin.setAttribute("aria-label", PIN_LABEL);
+      pin.innerHTML = `${PIN_ICON}<span class="sticky-notes-pin__count" hidden></span>`;
+      pinCountEl = pin.querySelector(".sticky-notes-pin__count");
+      toast = doc.createElement("div");
+      toast.className = "sticky-notes-toast";
+      toast.hidden = true;
+      toast.setAttribute("role", "status");
       bar = doc.createElement("div");
       bar.className = "sticky-notes-bar";
+      bar.hidden = readItem(BAR_STATE_KEY) !== BAR_OPEN;
       bar.innerHTML = `
       <button class="sticky-notes-bar__button" type="button" data-command="${TOGGLE_COMMAND}" aria-pressed="false">${TOGGLE_LABEL}</button>
       <span class="sticky-notes-bar__count">0</span>
@@ -1908,8 +1942,7 @@
       <button class="sticky-notes-bar__button" type="button" data-command="${CONNECT_COMMAND}" ${CONNECT_ATTRIBUTE}>${CONNECT_LABEL}</button>
       <button class="sticky-notes-bar__button" type="button" data-command="${EXPORT_MARKDOWN_COMMAND}">${MARKDOWN_LABEL}</button>
       <button class="sticky-notes-bar__button" type="button" data-command="${EXPORT_JSON_COMMAND}">${JSON_LABEL}</button>
-      <button class="sticky-notes-bar__button" type="button" data-command="${CLEAR_COMMAND}">${CLEAR_LABEL}</button>
-      <span class="sticky-notes-bar__message"></span>`;
+      <button class="sticky-notes-bar__button" type="button" data-command="${CLEAR_COMMAND}">${CLEAR_LABEL}</button>`;
       picker = createPicker({ doc, storage, key, onOpen: onSessionsOpen });
       picker.el.setAttribute(SEND_ATTRIBUTE, "");
       picker.el.hidden = true;
@@ -1919,17 +1952,29 @@
       toggleButton = bar.querySelector(`[data-command="${TOGGLE_COMMAND}"]`);
       downloadButton = bar.querySelector(`[data-command="${DOWNLOAD_COMMAND}"]`);
       countEl = bar.querySelector(".sticky-notes-bar__count");
-      messageEl = bar.querySelector(".sticky-notes-bar__message");
+      sendButton = bar.querySelector(`[data-command="${SEND_COMMAND}"]`);
       exportPane = doc.createElement("pre");
       exportPane.className = "sticky-notes-export";
       exportPane.hidden = true;
       leaders = doc.createElementNS(SVG_NS, "svg");
       leaders.setAttribute("class", "sticky-notes-leaders");
-      for (const node of [bar, exportPane, leaders]) {
+      for (const node of [pin, bar, toast, exportPane, leaders]) {
         node.setAttribute("data-turbo-temporary", "");
         root.appendChild(node);
       }
       bar.addEventListener("click", onBarClick);
+      pin.addEventListener("click", () => setOpen(bar.hidden));
+      updatePin();
+    }
+    function setOpen(open) {
+      bar.hidden = !open;
+      pin.setAttribute("aria-expanded", String(open));
+      writeItem(BAR_STATE_KEY, open ? BAR_OPEN : BAR_CLOSED);
+      if (!open) setPicking(false);
+    }
+    function updatePin() {
+      pinCountEl.textContent = notes.length;
+      pinCountEl.hidden = !notes.length;
     }
     function onBarClick(event) {
       const command = event.target.closest("[data-command]")?.dataset.command;
@@ -1974,12 +2019,33 @@
       doc.body.classList.toggle(PICKING_CLASS, on);
       toggleButton.setAttribute("aria-pressed", String(on));
       exportPane.hidden = true;
+      if (on && bar.hidden) setOpen(true);
       if (!on) unhover();
     }
-    function message(text, ms = MESSAGE_MS) {
-      messageEl.textContent = text;
+    function message(text, ms = MESSAGE_MS$1, kind = INFO) {
+      toast.textContent = text;
+      toast.dataset.kind = kind;
+      toast.hidden = false;
       view.clearTimeout(messageTimer);
-      messageTimer = view.setTimeout(() => messageEl.textContent = "", ms);
+      messageTimer = view.setTimeout(() => toast.hidden = true, ms);
+    }
+    function setSending(state) {
+      sendButton.disabled = !!state;
+      sendButton.classList.toggle(BUSY_CLASS, !!state);
+      sendButton.textContent = !state ? SEND_LABEL : state.total ? CAPTURING_LABEL(state.done, state.total) : SENDING_LABEL;
+    }
+    function readItem(name) {
+      try {
+        return storage.getItem(name);
+      } catch {
+        return null;
+      }
+    }
+    function writeItem(name, value) {
+      try {
+        storage.setItem(name, value);
+      } catch {
+      }
     }
     async function screenshot(rect = null) {
       setPicking(false);
@@ -1994,14 +2060,14 @@
         downloadButton.disabled = false;
         if (channelOn && lastFocusedId) {
           onShot(lastFocusedId, await toJpeg(canvas));
-          message(ATTACHED_MESSAGE(indexOf(lastFocusedId)));
+          message(ATTACHED_MESSAGE(indexOf(lastFocusedId)), MESSAGE_MS$1, OK);
         } else {
           const copied = await copyImage(view, blob);
-          message(copied ? COPIED_MESSAGE$1 : NOT_COPIED_MESSAGE);
+          message(copied ? COPIED_MESSAGE$1 : NOT_COPIED_MESSAGE, MESSAGE_MS$1, copied ? OK : INFO);
         }
         return blob;
       } catch (error) {
-        message(SCREENSHOT_FAILED_MESSAGE);
+        message(SCREENSHOT_FAILED_MESSAGE, MESSAGE_MS$1, ERROR);
         throw error;
       }
     }
@@ -2020,6 +2086,7 @@
       clearNodes();
       notes.forEach(renderNote);
       countEl.textContent = notes.length;
+      updatePin();
       drawLeaders();
     }
     function renderNote(note, index2) {
@@ -2170,6 +2237,7 @@
     }
     const indexOf = (id) => notes.findIndex((note) => note.id === id) + 1;
     const session = () => picker.value;
+    const sessionLabel = () => picker.label;
     const refreshSessions = (list) => picker.refresh(list);
     const elementOf = (id) => live.get(id)?.el ?? null;
     const setShots = (count) => shotsEl.textContent = SHOTS_LABEL(count);
@@ -2185,7 +2253,9 @@
       screenshot,
       setChannel,
       setConnectAllowed,
+      setSending,
       session,
+      sessionLabel,
       refreshSessions,
       elementOf,
       setShots,
@@ -2245,14 +2315,14 @@
   const AUTO_SHOT_KEY = "sticky-notes:auto-shot";
   const AUTO_SHOT_OFF = "0";
   const AUTO_SHOT_PADDING = 16;
-  const SENT_MESSAGE = "sent";
+  const SENT_MESSAGE = (label) => label ? `sent to ${label}` : "sent";
   const SENDING_MESSAGE = "sending…";
-  const CAPTURING_MESSAGE = "capturing…";
   const QUEUED_MESSAGE = "queued for the next review session";
   const PICK_SESSION_MESSAGE = "pick a session first";
   const NO_DAEMON_MESSAGE = "no daemon";
   const SEND_FAILED_MESSAGE = "send failed";
   const LOST_MESSAGE = (n) => `${n} screenshots lost`;
+  const MESSAGE_MS = 1500;
   const ERROR_MESSAGE_MS = 4e3;
   const TOKEN_PROMPT = "sticky-notes daemon token (from ~/.cache/sticky-notes/daemon.json)";
   function createStickyNotes(options = {}) {
@@ -2366,15 +2436,15 @@
       const clipboard = view.navigator?.clipboard;
       if (!clipboard) return layer?.message(COPY_FAILED_MESSAGE);
       clipboard.writeText(text).then(
-        () => layer?.message(COPIED_MESSAGE),
-        () => layer?.message(COPY_FAILED_MESSAGE)
+        () => layer?.message(COPIED_MESSAGE, MESSAGE_MS, OK),
+        () => layer?.message(COPY_FAILED_MESSAGE, MESSAGE_MS, ERROR)
       );
     }
     const screenshot = (rect) => layer?.screenshot(rect) ?? Promise.resolve(null);
     function reportLost() {
       const lost = Number(read2(PENDING_PREFIX + key)) || 0;
       write2(PENDING_PREFIX + key, "0");
-      if (lost) layer.message(LOST_MESSAGE(lost), ERROR_MESSAGE_MS);
+      if (lost) layer.message(LOST_MESSAGE(lost), ERROR_MESSAGE_MS, ERROR);
     }
     async function refreshSessions() {
       if (!channel) return;
@@ -2383,7 +2453,7 @@
         layer?.refreshSessions(sessions);
         if (engineChannel) layer?.setChannel(true);
       } catch (error) {
-        layer?.message(`${NO_DAEMON_MESSAGE}: ${error.message}`, ERROR_MESSAGE_MS);
+        layer?.message(`${NO_DAEMON_MESSAGE}: ${error.message}`, ERROR_MESSAGE_MS, ERROR);
         if (!engineChannel) return;
         layer?.setConnectAllowed(false);
         layer?.setChannel(false);
@@ -2420,28 +2490,26 @@
       try {
         const doc = (root ?? document.body).ownerDocument;
         const rows = notes.map((note, index2) => ({ ...toRow(note, index2), shots: pending.get(note.id) ?? [] }));
-        if (autoShot) {
-          layer.message(CAPTURING_MESSAGE);
-          await autoShots(doc, rows);
-        }
+        if (autoShot) await autoShots(doc, rows);
+        layer.setSending({});
         const payload = { session, url: doc.defaultView.location.href, key, title: doc.title, notes: rows };
         const result = await channel.send(payload);
         pending.clear();
         countPending();
-        layer?.message(result.queued ? QUEUED_MESSAGE : SENT_MESSAGE);
+        layer?.message(result.queued ? QUEUED_MESSAGE : SENT_MESSAGE(layer.sessionLabel()), MESSAGE_MS, OK);
         return result;
       } catch (error) {
-        layer?.message(`${SEND_FAILED_MESSAGE}: ${error.message}`, ERROR_MESSAGE_MS);
+        layer?.message(`${SEND_FAILED_MESSAGE}: ${error.message}`, ERROR_MESSAGE_MS, ERROR);
         throw error;
       } finally {
         sending = false;
+        layer?.setSending(null);
       }
     }
     async function autoShots(doc, rows) {
-      for (const [index2, note] of notes.slice().entries()) {
-        if (!rows[index2] || rows[index2].shots.length) continue;
-        const el = layer?.elementOf(note.id);
-        if (!el) continue;
+      const todo = notes.slice().map((note, index2) => [index2, layer?.elementOf(note.id)]).filter(([index2, el]) => el && rows[index2] && !rows[index2].shots.length);
+      for (const [done, [index2, el]] of todo.entries()) {
+        layer.setSending({ done, total: todo.length });
         rows[index2].shots = [await toJpeg(await captureElement(doc, el, AUTO_SHOT_PADDING))];
       }
     }

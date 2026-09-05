@@ -75,7 +75,7 @@ describe("send", () => {
     const lost = createStickyNotes({ key: "/lost", storage, channel }).mount()
 
     // the last bar on the page belongs to the instance mounted last
-    expect([...document.querySelectorAll(".sticky-notes-bar__message")].at(-1).textContent).toBe("2 screenshots lost")
+    expect([...document.querySelectorAll(".sticky-notes-toast")].at(-1).textContent).toBe("2 screenshots lost")
     expect(storage.data.get("sticky-notes:pending:/lost")).toBe("0")
     lost.unmount()
   })
@@ -91,7 +91,7 @@ describe("send", () => {
 
     await expect(auto.send()).rejects.toThrow()
     expect(shooting.sent).toEqual([])
-    expect([...document.querySelectorAll(".sticky-notes-bar__message")].at(-1).textContent).toMatch(/^send failed: /)
+    expect([...document.querySelectorAll(".sticky-notes-toast")].at(-1).textContent).toMatch(/^send failed: /)
     auto.unmount()
   })
 
@@ -139,7 +139,7 @@ describe("send", () => {
     const bar = [...document.querySelectorAll(".sticky-notes-bar")].at(-1)
     expect(bar.querySelector('[data-command="send"]').hidden).toBe(true)
     expect(bar.querySelector('[data-command="connect"]').hidden).toBe(true)
-    expect(bar.querySelector(".sticky-notes-bar__message").textContent).toMatch(/^no daemon: /)
+    expect([...document.querySelectorAll(".sticky-notes-toast")].at(-1).textContent).toMatch(/^no daemon: /)
     engine.unmount()
   })
 
@@ -161,7 +161,7 @@ describe("send", () => {
     const first = one.send()
 
     expect(await one.send()).toBeNull()
-    expect([...document.querySelectorAll(".sticky-notes-bar__message")].at(-1).textContent).toBe("sending…")
+    expect([...document.querySelectorAll(".sticky-notes-toast")].at(-1).textContent).toBe("sending…")
 
     release()
     expect(await first).toEqual({ delivered: true })

@@ -1,7 +1,7 @@
 # @hakubjozak/sticky-notes
 
-In-place review layer for any web page. Turn on Notes mode, click an element,
-a yellow note pins itself to it — dragged, resized, persisted in
+In-place review layer for any web page. Open the toolbar behind the pin in the
+bottom-right corner, turn on Notes mode, click an element, a yellow note pins itself to it — dragged, resized, persisted in
 `localStorage`. Export gives every note as CSS path · quoted text · nearest
 heading · comment, ready to paste back to whoever has to fix it.
 

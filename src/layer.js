@@ -12,6 +12,14 @@ const STYLE_ID = "sticky-notes-style"
 const SVG_NS = "http://www.w3.org/2000/svg"
 const MESSAGE_MS = 1500
 const ESCAPE_KEY = "Escape"
+const BAR_STATE_KEY = "sticky-notes:bar" // per browser, not per page: the reviewer opened the toolbar
+const BAR_OPEN = "open"
+const BAR_CLOSED = "closed"
+
+// toast kinds — the colour says how it went before the text is read
+export const INFO = "info"
+export const OK = "ok"
+export const ERROR = "error"
 
 const PICKING_CLASS = "sticky-notes-picking"
 const HOVER_CLASS = "sticky-notes-hover"
@@ -31,6 +39,7 @@ const REMOVE_COMMAND = "remove"
 const SEND_COMMAND = "send"
 const AUTO_SHOT_COMMAND = "auto-shot"
 const CONNECT_COMMAND = "connect"
+const PIN_COMMAND = "pin"
 
 const TOGGLE_LABEL = "✎ Notes"
 const SCREENSHOT_LABEL = "▭ Screenshot"
@@ -48,12 +57,19 @@ const REMOVE_LABEL = "remove note"
 const DRAG_HINT = "drag to move"
 const NOTE_PLACEHOLDER = "note…"
 const SEND_LABEL = "Send"
+const PIN_LABEL = "sticky notes"
+const CAPTURING_LABEL = (done, total) => `capturing ${done}/${total}`
+const SENDING_LABEL = "sending…"
 const AUTO_SHOT_LABEL = "auto-shot"
 const CONNECT_LABEL = "Connect"
 const ATTACHED_MESSAGE = (n) => `attached to #${n}`
 const SHOTS_LABEL = (n) => (n ? `${n} shot${n === 1 ? "" : "s"}` : "")
 const SEND_ATTRIBUTE = "data-send"
 const CONNECT_ATTRIBUTE = "data-connect"
+const BUSY_CLASS = "sticky-notes-bar__button--busy"
+
+// A pushpin: the one thing left on the page while the toolbar is folded away.
+const PIN_ICON = `<svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M9.5 1.5 14.5 6.5l-1.4 1.4-.7-.7L9.6 10l.2 2.8L8.4 14.2 5.7 11.5 2 15.2l-1.2-1.2 3.7-3.7L1.8 7.6l1.4-1.4 2.8.2 2.8-2.8-.7-.7z"/></svg>`
 
 const LEADER_COLOR = "#c9a227"
 const LEADER_WIDTH = 1.5
@@ -68,9 +84,12 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
   let notes = []
   let controller = null
   let bar = null
+  let pin = null
+  let pinCountEl = null
+  let toast = null
+  let sendButton = null
   let toggleButton = null
   let countEl = null
-  let messageEl = null
   let exportPane = null
   let leaders = null
   let picking = false
@@ -96,7 +115,8 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
     setPicking(false)
     controller.abort()
     clearNodes()
-    for (const node of [bar, exportPane, leaders]) node.remove()
+    view.clearTimeout(messageTimer)
+    for (const node of [pin, bar, toast, exportPane, leaders]) node.remove()
     unhover()
     doc.getElementById(STYLE_ID)?.remove()
   }
@@ -111,8 +131,23 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
   }
 
   function buildChrome() {
+    pin = doc.createElement("button")
+    pin.className = "sticky-notes-pin"
+    pin.type = "button"
+    pin.dataset.command = PIN_COMMAND
+    pin.title = PIN_LABEL
+    pin.setAttribute("aria-label", PIN_LABEL)
+    pin.innerHTML = `${PIN_ICON}<span class="sticky-notes-pin__count" hidden></span>`
+    pinCountEl = pin.querySelector(".sticky-notes-pin__count")
+
+    toast = doc.createElement("div")
+    toast.className = "sticky-notes-toast"
+    toast.hidden = true
+    toast.setAttribute("role", "status")
+
     bar = doc.createElement("div")
     bar.className = "sticky-notes-bar"
+    bar.hidden = readItem(BAR_STATE_KEY) !== BAR_OPEN // folded away until the reviewer wants it
     bar.innerHTML = `
       <button class="sticky-notes-bar__button" type="button" data-command="${TOGGLE_COMMAND}" aria-pressed="false">${TOGGLE_LABEL}</button>
       <span class="sticky-notes-bar__count">0</span>
@@ -124,8 +159,7 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
       <button class="sticky-notes-bar__button" type="button" data-command="${CONNECT_COMMAND}" ${CONNECT_ATTRIBUTE}>${CONNECT_LABEL}</button>
       <button class="sticky-notes-bar__button" type="button" data-command="${EXPORT_MARKDOWN_COMMAND}">${MARKDOWN_LABEL}</button>
       <button class="sticky-notes-bar__button" type="button" data-command="${EXPORT_JSON_COMMAND}">${JSON_LABEL}</button>
-      <button class="sticky-notes-bar__button" type="button" data-command="${CLEAR_COMMAND}">${CLEAR_LABEL}</button>
-      <span class="sticky-notes-bar__message"></span>`
+      <button class="sticky-notes-bar__button" type="button" data-command="${CLEAR_COMMAND}">${CLEAR_LABEL}</button>`
     picker = createPicker({ doc, storage, key, onOpen: onSessionsOpen })
     picker.el.setAttribute(SEND_ATTRIBUTE, "")
     picker.el.hidden = true
@@ -135,7 +169,7 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
     toggleButton = bar.querySelector(`[data-command="${TOGGLE_COMMAND}"]`)
     downloadButton = bar.querySelector(`[data-command="${DOWNLOAD_COMMAND}"]`)
     countEl = bar.querySelector(".sticky-notes-bar__count")
-    messageEl = bar.querySelector(".sticky-notes-bar__message")
+    sendButton = bar.querySelector(`[data-command="${SEND_COMMAND}"]`)
 
     exportPane = doc.createElement("pre")
     exportPane.className = "sticky-notes-export"
@@ -145,12 +179,27 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
     leaders.setAttribute("class", "sticky-notes-leaders")
 
     // data-turbo-temporary: keep our DOM out of Turbo's snapshot cache
-    for (const node of [bar, exportPane, leaders]) {
+    for (const node of [pin, bar, toast, exportPane, leaders]) {
       node.setAttribute("data-turbo-temporary", "")
       root.appendChild(node)
     }
 
     bar.addEventListener("click", onBarClick)
+    pin.addEventListener("click", () => setOpen(bar.hidden))
+    updatePin()
+  }
+
+  // Folding the bar ends picking too: the pressed ✎ would be out of sight.
+  function setOpen(open) {
+    bar.hidden = !open
+    pin.setAttribute("aria-expanded", String(open))
+    writeItem(BAR_STATE_KEY, open ? BAR_OPEN : BAR_CLOSED)
+    if (!open) setPicking(false)
+  }
+
+  function updatePin() {
+    pinCountEl.textContent = notes.length
+    pinCountEl.hidden = !notes.length
   }
 
   function onBarClick(event) {
@@ -209,14 +258,42 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
     toggleButton.setAttribute("aria-pressed", String(on))
     exportPane.hidden = true
 
+    if (on && bar.hidden) setOpen(true) // toggled from outside (keyboard, host) while folded
     if (!on) unhover()
   }
 
   // ms: callers pass a longer time for anything the reviewer must actually read.
-  function message(text, ms = MESSAGE_MS) {
-    messageEl.textContent = text
+  // The toast lives outside the bar, so it shows while the bar is folded too.
+  function message(text, ms = MESSAGE_MS, kind = INFO) {
+    toast.textContent = text
+    toast.dataset.kind = kind
+    toast.hidden = false
     view.clearTimeout(messageTimer)
-    messageTimer = view.setTimeout(() => (messageEl.textContent = ""), ms)
+    messageTimer = view.setTimeout(() => (toast.hidden = true), ms)
+  }
+
+  // null → idle; { done, total } → capturing; {} → posting. Send stays disabled
+  // throughout so the state is visible where the click happened.
+  function setSending(state) {
+    sendButton.disabled = !!state
+    sendButton.classList.toggle(BUSY_CLASS, !!state)
+    sendButton.textContent = !state ? SEND_LABEL : state.total ? CAPTURING_LABEL(state.done, state.total) : SENDING_LABEL
+  }
+
+  function readItem(name) {
+    try {
+      return storage.getItem(name)
+    } catch {
+      return null
+    }
+  }
+
+  function writeItem(name, value) {
+    try {
+      storage.setItem(name, value)
+    } catch {
+      // private mode: the bar state lasts for this page view
+    }
   }
 
   // rect omitted → interactive marquee; given → capture straight away (agents, tests).
@@ -238,15 +315,15 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
 
       if (channelOn && lastFocusedId) {
         onShot(lastFocusedId, await toJpeg(canvas))
-        message(ATTACHED_MESSAGE(indexOf(lastFocusedId)))
+        message(ATTACHED_MESSAGE(indexOf(lastFocusedId)), MESSAGE_MS, OK)
       } else {
         const copied = await copyImage(view, blob)
-        message(copied ? COPIED_MESSAGE : NOT_COPIED_MESSAGE)
+        message(copied ? COPIED_MESSAGE : NOT_COPIED_MESSAGE, MESSAGE_MS, copied ? OK : INFO)
       }
 
       return blob
     } catch (error) {
-      message(SCREENSHOT_FAILED_MESSAGE)
+      message(SCREENSHOT_FAILED_MESSAGE, MESSAGE_MS, ERROR)
       throw error
     }
   }
@@ -269,6 +346,7 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
     clearNodes()
     notes.forEach(renderNote)
     countEl.textContent = notes.length
+    updatePin()
     drawLeaders()
   }
 
@@ -462,6 +540,7 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
 
   const indexOf = (id) => notes.findIndex((note) => note.id === id) + 1
   const session = () => picker.value
+  const sessionLabel = () => picker.label
   const refreshSessions = (list) => picker.refresh(list)
   const elementOf = (id) => live.get(id)?.el ?? null
   const setShots = (count) => (shotsEl.textContent = SHOTS_LABEL(count))
@@ -478,7 +557,9 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
     screenshot,
     setChannel,
     setConnectAllowed,
+    setSending,
     session,
+    sessionLabel,
     refreshSessions,
     elementOf,
     setShots,

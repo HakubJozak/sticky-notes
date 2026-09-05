@@ -3,7 +3,7 @@
 import { cssPath, contextOf, excerpt } from "./path.js"
 import { createStore } from "./store.js"
 import { toMarkdown, toJson, JSON_FORMAT } from "./exporter.js"
-import { createLayer } from "./layer.js"
+import { createLayer, OK, ERROR } from "./layer.js"
 import { DEFAULT_BOX, initialOffset } from "./geometry.js"
 import { createChannel, detectChannel, saveToken, DIRECT_BASE } from "./channel.js"
 import { captureElement, toJpeg } from "./screenshot.js"
@@ -16,14 +16,14 @@ const PENDING_PREFIX = "sticky-notes:pending:"
 const AUTO_SHOT_KEY = "sticky-notes:auto-shot"
 const AUTO_SHOT_OFF = "0"
 const AUTO_SHOT_PADDING = 16 // px around the noted element
-const SENT_MESSAGE = "sent"
+const SENT_MESSAGE = (label) => (label ? `sent to ${label}` : "sent")
 const SENDING_MESSAGE = "sending…"
-const CAPTURING_MESSAGE = "capturing…"
 const QUEUED_MESSAGE = "queued for the next review session"
 const PICK_SESSION_MESSAGE = "pick a session first"
 const NO_DAEMON_MESSAGE = "no daemon"
 const SEND_FAILED_MESSAGE = "send failed"
 const LOST_MESSAGE = (n) => `${n} screenshots lost`
+const MESSAGE_MS = 1500
 const ERROR_MESSAGE_MS = 4000 // failures stay up long enough to read
 const TOKEN_PROMPT = "sticky-notes daemon token (from ~/.cache/sticky-notes/daemon.json)"
 
@@ -154,8 +154,8 @@ export function createStickyNotes(options = {}) {
     if (!clipboard) return layer?.message(COPY_FAILED_MESSAGE)
 
     clipboard.writeText(text).then(
-      () => layer?.message(COPIED_MESSAGE),
-      () => layer?.message(COPY_FAILED_MESSAGE),
+      () => layer?.message(COPIED_MESSAGE, MESSAGE_MS, OK),
+      () => layer?.message(COPY_FAILED_MESSAGE, MESSAGE_MS, ERROR),
     )
   }
 
@@ -166,7 +166,7 @@ export function createStickyNotes(options = {}) {
   function reportLost() {
     const lost = Number(read(PENDING_PREFIX + key)) || 0
     write(PENDING_PREFIX + key, "0")
-    if (lost) layer.message(LOST_MESSAGE(lost), ERROR_MESSAGE_MS)
+    if (lost) layer.message(LOST_MESSAGE(lost), ERROR_MESSAGE_MS, ERROR)
   }
 
   // The engine renders its channel unconditionally; this is where the page
@@ -182,7 +182,7 @@ export function createStickyNotes(options = {}) {
       // the bar message and the hidden controls are the report; every caller
       // (mount, picker focus, connect) drops the promise, so a rethrow here
       // could only ever surface as an unhandled rejection
-      layer?.message(`${NO_DAEMON_MESSAGE}: ${error.message}`, ERROR_MESSAGE_MS)
+      layer?.message(`${NO_DAEMON_MESSAGE}: ${error.message}`, ERROR_MESSAGE_MS, ERROR)
       if (!engineChannel) return // file:// page: Connect is still the way back
 
       layer?.setConnectAllowed(false) // before setChannel, or Connect flashes into view
@@ -235,36 +235,33 @@ export function createStickyNotes(options = {}) {
       const doc = (root ?? document.body).ownerDocument
       const rows = notes.map((note, index) => ({ ...toRow(note, index), shots: pending.get(note.id) ?? [] }))
 
-      if (autoShot) {
-        layer.message(CAPTURING_MESSAGE) // capturing every noted element takes seconds
-        await autoShots(doc, rows)
-      }
+      if (autoShot) await autoShots(doc, rows) // capturing every noted element takes seconds
 
+      layer.setSending({})
       const payload = { session, url: doc.defaultView.location.href, key, title: doc.title, notes: rows }
       const result = await channel.send(payload)
       pending.clear()
       countPending()
-      layer?.message(result.queued ? QUEUED_MESSAGE : SENT_MESSAGE)
+      layer?.message(result.queued ? QUEUED_MESSAGE : SENT_MESSAGE(layer.sessionLabel()), MESSAGE_MS, OK)
 
       return result
     } catch (error) {
-      layer?.message(`${SEND_FAILED_MESSAGE}: ${error.message}`, ERROR_MESSAGE_MS)
+      layer?.message(`${SEND_FAILED_MESSAGE}: ${error.message}`, ERROR_MESSAGE_MS, ERROR)
       throw error
     } finally {
       sending = false
+      layer?.setSending(null)
     }
   }
 
   // Every noted element without a manual screenshot gets one, so Claude sees
-  // what the note points at.
+  // what the note points at. Progress goes to the Send button: n of total.
   async function autoShots(doc, rows) {
     // snapshot: capturing awaits, and a note pinned meanwhile has no row here
-    for (const [index, note] of notes.slice().entries()) {
-      if (!rows[index] || rows[index].shots.length) continue
+    const todo = notes.slice().map((note, index) => [index, layer?.elementOf(note.id)]).filter(([index, el]) => el && rows[index] && !rows[index].shots.length)
 
-      const el = layer?.elementOf(note.id)
-      if (!el) continue
-
+    for (const [done, [index, el]] of todo.entries()) {
+      layer.setSending({ done, total: todo.length })
       rows[index].shots = [await toJpeg(await captureElement(doc, el, AUTO_SHOT_PADDING))]
     }
   }

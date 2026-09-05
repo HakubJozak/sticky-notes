@@ -24,7 +24,7 @@ export function createPicker({ doc, storage, key, onOpen }) {
     el.innerHTML = ""
 
     if (!chosen) el.append(option(NONE, PICK_LABEL, { disabled: true }))
-    for (const session of sessions) el.append(option(session.id, session.label + SEPARATOR + session.cwd))
+    for (const session of sessions) el.append(option(session.id, session.label + SEPARATOR + session.cwd, { label: session.label }))
     el.append(option(QUEUE, QUEUE_LABEL))
 
     el.value = chosen ?? NONE
@@ -37,11 +37,12 @@ export function createPicker({ doc, storage, key, onOpen }) {
     return sessions.some((session) => session.id === remembered) ? remembered : null
   }
 
-  function option(value, text, { disabled = false } = {}) {
+  function option(value, text, { disabled = false, label = text } = {}) {
     const node = doc.createElement("option")
     node.value = value
     node.textContent = text
     node.disabled = disabled
+    node.dataset.label = label // the short name, for "sent to <label>"
 
     return node
   }
@@ -67,6 +68,10 @@ export function createPicker({ doc, storage, key, onOpen }) {
     refresh,
     get value() {
       return el.value
+    },
+    // "sent to <label>" reads better than a session id or the full option text
+    get label() {
+      return el.selectedOptions[0]?.dataset.label ?? ""
     },
   }
 }
