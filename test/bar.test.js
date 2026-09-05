@@ -96,9 +96,9 @@ describe("layout", () => {
   const layoutItem = () => document.querySelector('[data-command="layout"]')
   const follows = (a, b) => a.nextElementSibling === b
 
-  it("stacks vertically on request, auto-shot right under Screenshot, and remembers", () => {
+  it("stacks vertically on request and remembers; auto-shot stays by the camera", () => {
     const auto = document.querySelector(".sticky-notes-bar__auto")
-    expect(follows(sendButton(), auto)).toBe(true)
+    expect(follows(document.querySelector('[data-command="screenshot"]'), auto)).toBe(true)
     expect(layoutItem().title).toBe("Stack vertically")
 
     click(layoutItem())
@@ -110,7 +110,6 @@ describe("layout", () => {
 
     click(layoutItem())
     expect(bar().classList.contains("sticky-notes-bar--vertical")).toBe(false)
-    expect(follows(sendButton(), auto)).toBe(true)
   })
 
   it("moves the toast beside an open column", () => {

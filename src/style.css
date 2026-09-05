@@ -188,24 +188,10 @@
   cursor: pointer;
 }
 
-/* Clear | Send: the two ways a batch ends, side by side */
-.sticky-notes-bar__go {
-  display: inline-flex;
-  align-items: stretch;
-}
-
-.sticky-notes-bar__button--clear {
-  height: 26px;
-  box-sizing: border-box;
-  padding: 0 8px;
-  border-color: #d9b93c;
-  color: #6b5a12;
-}
-
-.sticky-notes-bar__button--clear:hover:not(:disabled) {
+/* the eraser warns on hover: it takes every note */
+.sticky-notes-bar__tool[data-command="clear"]:hover:not(:disabled) {
   color: #b3261e;
   border-color: #b3261e;
-  background: rgba(179, 38, 30, 0.08);
 }
 
 .sticky-notes-bar__button--send {
@@ -255,18 +241,59 @@
   }
 }
 
+/* Screenshot and its auto-shot checkbox: one row in both layouts */
+.sticky-notes-bar__shoot {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* auto-shot: a bare box next to the camera; a red check when it is on */
 .sticky-notes-bar__auto {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  color: #6b5a12;
-  white-space: nowrap;
+  padding: 4px;
   cursor: pointer;
 }
 
 .sticky-notes-bar__auto input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
   margin: 0;
-  accent-color: #1e2430;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sticky-notes-bar__check {
+  position: relative;
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  background: #fffbe0;
+  border: 1px solid #6b5a12;
+}
+
+.sticky-notes-bar__auto input:checked + .sticky-notes-bar__check {
+  border-color: #b3261e;
+}
+
+.sticky-notes-bar__auto input:checked + .sticky-notes-bar__check::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 0;
+  width: 5px;
+  height: 10px;
+  border: solid #b3261e;
+  border-width: 0 2.5px 2.5px 0;
+  transform: rotate(40deg);
+}
+
+.sticky-notes-bar__auto input:focus-visible + .sticky-notes-bar__check {
+  outline: 2px solid #1e2430;
+  outline-offset: 1px;
 }
 
 .sticky-notes-bar__shots {
@@ -361,16 +388,19 @@
 }
 
 .sticky-notes-bar--vertical .sticky-notes-bar__button,
-.sticky-notes-bar--vertical .sticky-notes-bar__auto,
 .sticky-notes-bar--vertical .sticky-notes-bar__shots {
   box-sizing: border-box;
   width: 100%;
   text-align: left;
 }
 
-.sticky-notes-bar--vertical .sticky-notes-bar__auto,
 .sticky-notes-bar--vertical .sticky-notes-bar__shots {
   padding: 3px 8px;
+}
+
+.sticky-notes-bar--vertical .sticky-notes-bar__shoot .sticky-notes-bar__tool {
+  flex: 1;
+  width: auto;
 }
 
 .sticky-notes-bar--vertical .sticky-notes-bar__tool {
@@ -397,17 +427,7 @@
   border-bottom: 0;
 }
 
-.sticky-notes-bar--vertical .sticky-notes-bar__go {
-  width: 100%;
-}
-
-.sticky-notes-bar--vertical .sticky-notes-bar__button--clear {
-  width: auto;
-}
-
 .sticky-notes-bar--vertical .sticky-notes-bar__button--send {
-  flex: 1;
-  width: auto;
   text-align: center;
 }
 
