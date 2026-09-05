@@ -5,7 +5,7 @@ description: Use when the user wants to review a page in place — an HTML artif
 
 # Sticky notes
 
-In-place review layer for any web page: a "✎ Notes" mode where clicking an
+In-place review layer for any web page: an "Add note" mode where clicking an
 element pins a draggable, resizable yellow note to it; export gives every note
 as **CSS path · quoted element text · nearest heading · comment**. Notes live in
 the reviewer's localStorage under `sticky-notes:<key>` (legacy `kz-notes:<key>`
@@ -109,7 +109,7 @@ every note that carries one. Meta is `url`, `key`, `count`.
 
 | action | behaviour |
 |---|---|
-| ✎ Notes → click element | note anchored at the element's top-left; opens to its left, flips right/below near the viewport edge; mode turns off |
+| Add note → click element | note anchored at the element's top-left; opens to its left, flips right/below near the viewport edge; mode turns off |
 | header drag / corner drag | move / resize; offset and size persisted |
 | dotted leader | from note border to the element's top-left dot + numbered badge |
 | badge click · – | collapse / expand |

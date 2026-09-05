@@ -47,8 +47,11 @@ const CONNECT_COMMAND = "connect"
 const PIN_COMMAND = "pin"
 const LAYOUT_COMMAND = "layout"
 
-const TOGGLE_LABEL = "✎ Notes"
-const SCREENSHOT_LABEL = "▭ Screenshot"
+const TOGGLE_LABEL = "Add note"
+const SCREENSHOT_LABEL = "Screenshot"
+// tool icons, editor style: a bold plus and a camera, both from currentColor
+const PLUS_ICON = `<svg viewBox="0 0 20 20" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M8.5 2h3v6.5H18v3h-6.5V18h-3v-6.5H2v-3h6.5z"/></svg>`
+const CAMERA_ICON = `<svg viewBox="0 0 20 20" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M7 3h6l1.4 2H18a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h3.6zm3 4.5a3.75 3.75 0 1 0 0 7.5 3.75 3.75 0 0 0 0-7.5zm0 2a1.75 1.75 0 1 1 0 3.5 1.75 1.75 0 0 1 0-3.5z"/></svg>`
 const DOWNLOAD_LABEL = "Download screenshot"
 const SCREENSHOT_HINT = "drag a rectangle · Esc cancels"
 const RENDERING_MESSAGE = "rendering…"
@@ -167,8 +170,8 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
     bar.hidden = readItem(BAR_STATE_KEY) !== BAR_OPEN // folded away until the reviewer wants it
     bar.innerHTML = `
       <span class="sticky-notes-bar__group">
-        <button class="sticky-notes-bar__button" type="button" data-command="${TOGGLE_COMMAND}" aria-pressed="false">${TOGGLE_LABEL} <span class="sticky-notes-bar__count">0</span></button>
-        <button class="sticky-notes-bar__button" type="button" data-command="${SCREENSHOT_COMMAND}">${SCREENSHOT_LABEL}</button>
+        <button class="sticky-notes-bar__button sticky-notes-bar__tool" type="button" data-command="${TOGGLE_COMMAND}" aria-pressed="false">${PLUS_ICON}<span class="sticky-notes-bar__caption">${TOGGLE_LABEL}</span><span class="sticky-notes-bar__count" hidden>0</span></button>
+        <button class="sticky-notes-bar__button sticky-notes-bar__tool" type="button" data-command="${SCREENSHOT_COMMAND}">${CAMERA_ICON}<span class="sticky-notes-bar__caption">${SCREENSHOT_LABEL}</span></button>
       </span>
       <span class="sticky-notes-bar__group sticky-notes-bar__group--deliver">
         <button class="sticky-notes-bar__button sticky-notes-bar__button--send" type="button" data-command="${SEND_COMMAND}" ${SEND_ATTRIBUTE} hidden>${SEND_LABEL}</button>
@@ -240,7 +243,7 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
     toast.classList.toggle(ASIDE_CLASS, layout === VERTICAL && !bar.hidden)
   }
 
-  // Folding the bar ends picking too: the pressed ✎ would be out of sight.
+  // Folding the bar ends picking too: the pressed Add note would be out of sight.
   function setOpen(open) {
     bar.hidden = !open
     moreEl.open = false
@@ -403,6 +406,7 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
     clearNodes()
     notes.forEach(renderNote)
     countEl.textContent = notes.length
+    countEl.hidden = !notes.length
     updatePin()
     drawLeaders()
   }

@@ -1,7 +1,7 @@
 # @hakubjozak/sticky-notes
 
 In-place review layer for any web page. Open the toolbar behind the pin in the
-bottom-right corner, turn on Notes mode, click an element, a yellow note pins itself to it — dragged, resized, persisted in
+bottom-right corner, press Add note, click an element, a yellow note pins itself to it — dragged, resized, persisted in
 `localStorage`. Export gives every note as CSS path · quoted text · nearest
 heading · comment, ready to paste back to whoever has to fix it.
 
@@ -224,7 +224,7 @@ The loop:
    standalone HTML file or artifact, `page.addScriptTag` + `StickyNotes.mount()`
    through a browser automation tool for a running app, or the Rails gem once
    per project.
-2. The person switches on ✎ Notes, clicks the spots that need changing, types.
+2. The person switches on Add note, clicks the spots that need changing, types.
 3. Copy Markdown, paste it into the chat.
 4. The agent resolves each path against the current source (or greps for the
    quoted text), applies the change, republishes. Notes re-attach where the

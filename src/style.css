@@ -62,13 +62,12 @@
   display: flex;
   gap: 12px;
   align-items: center;
-  height: 36px;
   box-sizing: border-box;
   background: #fff3b0;
   color: #1e2430;
   border: 1px solid #d9b93c;
   border-right: 0;
-  padding: 0 10px;
+  padding: 5px 10px;
   box-shadow: 2px 3px 0 rgba(0, 0, 0, 0.18);
   font: 12px "IBM Plex Mono", ui-monospace, Menlo, monospace;
 }
@@ -118,6 +117,41 @@
 .sticky-notes-bar__button[aria-pressed="true"] {
   background: #1e2430;
   color: #fff3b0;
+}
+
+/* Tools, editor-palette style: a big icon over a small caption, the count
+   pinned to the corner of Add note. */
+.sticky-notes-bar__tool {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 64px;
+  height: 46px;
+  padding: 4px 6px;
+}
+
+.sticky-notes-bar__caption {
+  font-size: 10px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.sticky-notes-bar__tool .sticky-notes-bar__count {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+}
+
+.sticky-notes-bar__tool .sticky-notes-bar__count[hidden] {
+  display: none !important;
+}
+
+/* the pressed tool is the dark tile; the others are flat */
+.sticky-notes-bar__tool:hover:not(:disabled):not([aria-pressed="true"]) {
+  border-color: #d9b93c;
 }
 
 .sticky-notes-bar__count {
@@ -323,6 +357,23 @@
 .sticky-notes-bar--vertical .sticky-notes-bar__auto,
 .sticky-notes-bar--vertical .sticky-notes-bar__shots {
   padding: 3px 8px;
+}
+
+.sticky-notes-bar--vertical .sticky-notes-bar__tool {
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: 8px;
+  height: 36px;
+  padding: 0 8px;
+}
+
+.sticky-notes-bar--vertical .sticky-notes-bar__caption {
+  font-size: 12px;
+}
+
+.sticky-notes-bar--vertical .sticky-notes-bar__tool .sticky-notes-bar__count {
+  position: static;
+  margin-left: auto;
 }
 
 .sticky-notes-bar--vertical .sticky-notes-bar__picker {
