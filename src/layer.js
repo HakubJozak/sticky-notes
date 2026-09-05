@@ -43,7 +43,7 @@ const PIN_COMMAND = "pin"
 
 const TOGGLE_LABEL = "✎ Notes"
 const SCREENSHOT_LABEL = "▭ Screenshot"
-const DOWNLOAD_LABEL = "Download"
+const DOWNLOAD_LABEL = "Download screenshot"
 const SCREENSHOT_HINT = "drag a rectangle · Esc cancels"
 const RENDERING_MESSAGE = "rendering…"
 const SCREENSHOT_FAILED_MESSAGE = "screenshot failed"
@@ -51,13 +51,15 @@ const COPIED_MESSAGE = "copied"
 const NOT_COPIED_MESSAGE = "captured (clipboard blocked)"
 const MARKDOWN_LABEL = "Copy Markdown"
 const JSON_LABEL = "Copy JSON"
-const CLEAR_LABEL = "Clear"
+const CLEAR_LABEL = "Delete all notes"
 const COLLAPSE_LABEL = "collapse"
 const REMOVE_LABEL = "remove note"
 const DRAG_HINT = "drag to move"
 const NOTE_PLACEHOLDER = "note…"
 const SEND_LABEL = "Send"
 const PIN_LABEL = "sticky notes"
+const MORE_LABEL = "more"
+const MORE_GLYPH = "⋯"
 const CAPTURING_LABEL = (done, total) => `capturing ${done}/${total}`
 const SENDING_LABEL = "sending…"
 const AUTO_SHOT_LABEL = "auto-shot"
@@ -88,6 +90,7 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
   let pinCountEl = null
   let toast = null
   let sendButton = null
+  let moreEl = null
   let toggleButton = null
   let countEl = null
   let exportPane = null
@@ -149,21 +152,30 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
     bar.className = "sticky-notes-bar"
     bar.hidden = readItem(BAR_STATE_KEY) !== BAR_OPEN // folded away until the reviewer wants it
     bar.innerHTML = `
-      <button class="sticky-notes-bar__button" type="button" data-command="${TOGGLE_COMMAND}" aria-pressed="false">${TOGGLE_LABEL}</button>
-      <span class="sticky-notes-bar__count">0</span>
-      <button class="sticky-notes-bar__button" type="button" data-command="${SCREENSHOT_COMMAND}">${SCREENSHOT_LABEL}</button>
-      <button class="sticky-notes-bar__button" type="button" data-command="${DOWNLOAD_COMMAND}" disabled>${DOWNLOAD_LABEL}</button>
-      <button class="sticky-notes-bar__button" type="button" data-command="${SEND_COMMAND}" ${SEND_ATTRIBUTE} hidden>${SEND_LABEL}</button>
-      <label class="sticky-notes-bar__auto" ${SEND_ATTRIBUTE} hidden><input type="checkbox" data-command="${AUTO_SHOT_COMMAND}"> ${AUTO_SHOT_LABEL}</label>
-      <span class="sticky-notes-bar__shots" ${SEND_ATTRIBUTE} hidden></span>
-      <button class="sticky-notes-bar__button" type="button" data-command="${CONNECT_COMMAND}" ${CONNECT_ATTRIBUTE}>${CONNECT_LABEL}</button>
-      <button class="sticky-notes-bar__button" type="button" data-command="${EXPORT_MARKDOWN_COMMAND}">${MARKDOWN_LABEL}</button>
-      <button class="sticky-notes-bar__button" type="button" data-command="${EXPORT_JSON_COMMAND}">${JSON_LABEL}</button>
-      <button class="sticky-notes-bar__button" type="button" data-command="${CLEAR_COMMAND}">${CLEAR_LABEL}</button>`
+      <span class="sticky-notes-bar__group">
+        <button class="sticky-notes-bar__button" type="button" data-command="${TOGGLE_COMMAND}" aria-pressed="false">${TOGGLE_LABEL} <span class="sticky-notes-bar__count">0</span></button>
+        <button class="sticky-notes-bar__button" type="button" data-command="${SCREENSHOT_COMMAND}">${SCREENSHOT_LABEL}</button>
+      </span>
+      <span class="sticky-notes-bar__group sticky-notes-bar__group--deliver">
+        <button class="sticky-notes-bar__button sticky-notes-bar__button--send" type="button" data-command="${SEND_COMMAND}" ${SEND_ATTRIBUTE} hidden>${SEND_LABEL}</button>
+        <label class="sticky-notes-bar__auto" ${SEND_ATTRIBUTE} hidden><input type="checkbox" data-command="${AUTO_SHOT_COMMAND}"> ${AUTO_SHOT_LABEL}</label>
+        <span class="sticky-notes-bar__shots" ${SEND_ATTRIBUTE} hidden></span>
+        <button class="sticky-notes-bar__button" type="button" data-command="${CONNECT_COMMAND}" ${CONNECT_ATTRIBUTE}>${CONNECT_LABEL}</button>
+      </span>
+      <details class="sticky-notes-bar__more">
+        <summary class="sticky-notes-bar__button" title="${MORE_LABEL}" aria-label="${MORE_LABEL}">${MORE_GLYPH}</summary>
+        <div class="sticky-notes-bar__menu">
+          <button class="sticky-notes-bar__item" type="button" data-command="${EXPORT_MARKDOWN_COMMAND}">${MARKDOWN_LABEL}</button>
+          <button class="sticky-notes-bar__item" type="button" data-command="${EXPORT_JSON_COMMAND}">${JSON_LABEL}</button>
+          <button class="sticky-notes-bar__item" type="button" data-command="${DOWNLOAD_COMMAND}" disabled>${DOWNLOAD_LABEL}</button>
+          <button class="sticky-notes-bar__item sticky-notes-bar__item--danger" type="button" data-command="${CLEAR_COMMAND}">${CLEAR_LABEL}</button>
+        </div>
+      </details>`
     picker = createPicker({ doc, storage, key, onOpen: onSessionsOpen })
     picker.el.setAttribute(SEND_ATTRIBUTE, "")
     picker.el.hidden = true
-    bar.querySelector(`[data-command="${SEND_COMMAND}"]`).before(picker.el)
+    bar.querySelector(`[data-command="${SEND_COMMAND}"]`).before(picker.el) // joined: pick, then Send
+    moreEl = bar.querySelector(".sticky-notes-bar__more")
     shotsEl = bar.querySelector(".sticky-notes-bar__shots")
     autoShotInput = bar.querySelector(`[data-command="${AUTO_SHOT_COMMAND}"]`)
     toggleButton = bar.querySelector(`[data-command="${TOGGLE_COMMAND}"]`)
@@ -192,6 +204,7 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
   // Folding the bar ends picking too: the pressed ✎ would be out of sight.
   function setOpen(open) {
     bar.hidden = !open
+    moreEl.open = false
     pin.setAttribute("aria-expanded", String(open))
     writeItem(BAR_STATE_KEY, open ? BAR_OPEN : BAR_CLOSED)
     if (!open) setPicking(false)
@@ -205,6 +218,8 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
   function onBarClick(event) {
     const command = event.target.closest("[data-command]")?.dataset.command
     if (!command) return
+
+    moreEl.open = false // a picked menu item closes the menu
 
     if (command === TOGGLE_COMMAND) setPicking(!picking)
     if (command === SCREENSHOT_COMMAND) screenshot()
@@ -222,6 +237,7 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
     const signal = controller.signal
 
     doc.addEventListener("keydown", (event) => event.key === ESCAPE_KEY && setPicking(false), { signal })
+    doc.addEventListener("click", (event) => !bar.contains(event.target) && (moreEl.open = false), { signal })
     doc.addEventListener("mouseover", onMouseOver, { signal })
     doc.addEventListener("mouseout", unhover, { signal })
 

@@ -23,10 +23,15 @@
   cursor: pointer;
 }
 
-.sticky-notes-pin:hover,
-.sticky-notes-pin[aria-expanded="true"] {
+.sticky-notes-pin:hover {
   background: #e0b400;
   color: #1e2430;
+}
+
+.sticky-notes-pin[aria-expanded="true"] {
+  background: #1e2430;
+  color: #fff3b0;
+  border-color: #1e2430;
 }
 
 .sticky-notes-pin__count {
@@ -47,51 +52,127 @@
   display: none !important;
 }
 
+/* The bar docks onto the pin and wears the note's paper. Left to right, in the
+   order of the work: make notes → deliver them → everything else behind ⋯. */
 .sticky-notes-bar {
   position: fixed;
-  right: 60px;
+  right: 51px;
   bottom: 16px;
   z-index: 2147482930;
   display: flex;
-  gap: 6px;
+  gap: 12px;
   align-items: center;
-  background: var(--card, #fff);
-  color: var(--ink, #1e2430);
-  border: 1px solid var(--line, #c8ccd4);
-  padding: 6px 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  height: 36px;
+  box-sizing: border-box;
+  background: #fff3b0;
+  color: #1e2430;
+  border: 1px solid #d9b93c;
+  border-right: 0;
+  padding: 0 10px;
+  box-shadow: 2px 3px 0 rgba(0, 0, 0, 0.18);
   font: 12px "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+
+.sticky-notes-bar__group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* the delivery group is the one with a dark block in it; keep it apart */
+.sticky-notes-bar__group--deliver {
+  gap: 6px;
+  padding-left: 12px;
+  border-left: 1px solid #d9b93c;
 }
 
 .sticky-notes-bar__button {
   all: unset;
   cursor: pointer;
-  padding: 6px 10px;
-  border: 1px solid var(--line, #c8ccd4);
+  padding: 5px 8px;
+  border: 1px solid transparent;
+  color: #1e2430;
   font: inherit;
   line-height: 1;
   white-space: nowrap;
 }
 
 .sticky-notes-bar__button:disabled {
-  opacity: 0.4;
+  opacity: 0.45;
   cursor: default;
 }
 
-.sticky-notes-bar__button:hover:not(:disabled) {
-  background: rgba(0, 0, 0, 0.06);
+.sticky-notes-bar__button:hover:not(:disabled),
+.sticky-notes-bar__more[open] > summary {
+  background: rgba(107, 90, 18, 0.12);
+}
+
+.sticky-notes-bar__button:focus-visible,
+.sticky-notes-bar__item:focus-visible,
+.sticky-notes-bar__picker:focus-visible,
+.sticky-notes-pin:focus-visible {
+  outline: 2px solid #1e2430;
+  outline-offset: 1px;
 }
 
 .sticky-notes-bar__button[aria-pressed="true"] {
-  background: #e0b400;
-  color: #1e2430;
-  border-color: #e0b400;
+  background: #1e2430;
+  color: #fff3b0;
 }
 
 .sticky-notes-bar__count {
-  opacity: 0.6;
-  min-width: 3ch;
+  display: inline-block;
+  min-width: 14px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #1e2430;
+  color: #fff3b0;
+  font: 700 10px/14px "IBM Plex Mono", ui-monospace, Menlo, monospace;
   text-align: center;
+}
+
+.sticky-notes-bar__button[aria-pressed="true"] .sticky-notes-bar__count {
+  background: #fff3b0;
+  color: #1e2430;
+}
+
+/* picker + Send are one control: pick where, then go */
+.sticky-notes-bar__picker {
+  all: unset;
+  box-sizing: border-box;
+  height: 26px;
+  padding: 0 6px;
+  border: 1px solid #d9b93c;
+  border-right: 0;
+  background: #fffbe0;
+  color: #1e2430;
+  font: inherit;
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.sticky-notes-bar__button--send {
+  height: 26px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  background: #1e2430;
+  color: #fff3b0;
+  border-color: #1e2430;
+  font-weight: 700;
+}
+
+.sticky-notes-bar__button--send:hover:not(:disabled) {
+  background: #2f3748;
+}
+
+.sticky-notes-bar__button--send:disabled {
+  opacity: 1;
+  background: #6b5a12;
+  border-color: #6b5a12;
+  font-weight: 400;
 }
 
 /* `all: unset` on the bar controls beats the UA [hidden] rule — restore it */
@@ -120,19 +201,92 @@
   }
 }
 
+.sticky-notes-bar__auto {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #6b5a12;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.sticky-notes-bar__auto input {
+  margin: 0;
+  accent-color: #1e2430;
+}
+
+.sticky-notes-bar__shots {
+  color: #6b5a12;
+  white-space: nowrap;
+}
+
+/* ⋯ — exports, download, delete: needed, not often */
+.sticky-notes-bar__more {
+  position: relative;
+}
+
+.sticky-notes-bar__more > summary {
+  list-style: none;
+  padding: 5px 6px;
+  font-size: 16px;
+  line-height: 14px;
+}
+
+.sticky-notes-bar__more > summary::-webkit-details-marker {
+  display: none;
+}
+
+.sticky-notes-bar__menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  display: flex;
+  flex-direction: column;
+  min-width: 190px;
+  padding: 4px 0;
+  background: #fff3b0;
+  border: 1px solid #d9b93c;
+  box-shadow: 2px 3px 0 rgba(0, 0, 0, 0.18);
+}
+
+.sticky-notes-bar__item {
+  all: unset;
+  display: block;
+  padding: 6px 12px;
+  color: #1e2430;
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.sticky-notes-bar__item:hover:not(:disabled) {
+  background: rgba(107, 90, 18, 0.12);
+}
+
+.sticky-notes-bar__item:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.sticky-notes-bar__item--danger {
+  margin-top: 4px;
+  border-top: 1px solid #d9b93c;
+  color: #b3261e;
+}
+
 /* Quiet status above the pin: what just happened, in the colour of how it went. */
 .sticky-notes-toast {
   position: fixed;
   right: 16px;
   bottom: 60px;
-  z-index: 2147482931;
+  z-index: 2147482929; /* under the bar: an open ⋯ menu covers it */
   max-width: 320px;
   padding: 6px 10px;
-  background: var(--card, #fff);
-  color: var(--ink, #1e2430);
-  border: 1px solid var(--line, #c8ccd4);
-  border-left: 3px solid #c8ccd4;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  background: #fff3b0;
+  color: #1e2430;
+  border: 1px solid #d9b93c;
+  border-left: 3px solid #d9b93c;
+  box-shadow: 2px 3px 0 rgba(0, 0, 0, 0.18);
   font: 12px "IBM Plex Mono", ui-monospace, Menlo, monospace;
   animation: sticky-notes-rise 0.15s ease-out;
 }
@@ -341,31 +495,3 @@ body.sticky-notes-picking * {
   display: none !important;
 }
 
-.sticky-notes-bar__picker {
-  all: unset;
-  border: 1px solid var(--line, #c8ccd4);
-  padding: 5px 6px;
-  font: inherit;
-  max-width: 220px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  cursor: pointer;
-}
-
-.sticky-notes-bar__auto {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.sticky-notes-bar__auto input {
-  margin: 0;
-}
-
-.sticky-notes-bar__shots {
-  opacity: 0.7;
-  white-space: nowrap;
-}

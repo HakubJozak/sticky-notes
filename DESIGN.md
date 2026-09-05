@@ -119,7 +119,7 @@ Plain node, no build, no npm deps. State lives under `~/.cache/sticky-notes/`
 |---|---|
 | pin (fixed, bottom-right; the bar folds behind it, `sticky-notes:bar` remembers) | `.sticky-notes-pin` (`[aria-expanded=true]` while the bar shows), `.sticky-notes-pin__count` |
 | toast (above the pin, `data-kind` info / ok / error) | `.sticky-notes-toast` |
-| bar (fixed, left of the pin) | `.sticky-notes-bar`, buttons `.sticky-notes-bar__button` (`[aria-pressed=true]` while picking, `--busy` with the "capturing 2/5" / "sending…" label while Send runs), `.sticky-notes-bar__count`, `.sticky-notes-bar__picker` (session `<select>`), `.sticky-notes-bar__auto` (auto-shot checkbox label), `.sticky-notes-bar__shots` (unsent shot count) |
+| bar (fixed, left of the pin) | `.sticky-notes-bar`, buttons `.sticky-notes-bar__button` (`[aria-pressed=true]` while picking, `--busy` with the "capturing 2/5" / "sending…" label while Send runs), `.sticky-notes-bar__count` (inside ✎ Notes), `.sticky-notes-bar__group` (`--deliver` = picker + Send), `.sticky-notes-bar__more` (`<details>` ⋯ menu: `__menu`, `__item`, `__item--danger`), `.sticky-notes-bar__picker` (session `<select>`), `.sticky-notes-bar__auto` (auto-shot checkbox label), `.sticky-notes-bar__shots` (unsent shot count) |
 | export pane | `.sticky-notes-export` |
 | leaders svg | `.sticky-notes-leaders` |
 | note | `.sticky-note`, `.sticky-note--dragging`, `.sticky-note__header`, `.sticky-note__index`, `.sticky-note__path`, `.sticky-note__button` (`data-command="collapse"` / `"remove"`), `.sticky-note__text` (textarea) |
