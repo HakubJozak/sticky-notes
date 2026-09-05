@@ -106,7 +106,8 @@ Plain node, no build, no npm deps. State lives under `~/.cache/sticky-notes/`
 | `channel.js` | the MCP half: hand-rolled JSON-RPC over stdio, `claude/channel` capability, `notifications/claude/channel`. Buffers events until `READY_DELAY_MS` (3 s) after `notifications/initialized` — Claude Code drops what arrives before that |
 | `daemon-client.js` | the socket to the daemon: spawns it detached when the socket file is missing, retries every 2 s on close, respawns on `ECONNREFUSED` (only a fresh daemon can replace a stale socket file) |
 | `http.js` | the loopback API: `GET /sessions`, `POST /notes`, `POST /stop`, all behind `Authorization: Bearer <token>`; CORS `*` because the token is the gate; 16 MB body cap |
-| `socket.js` | the unix-socket server: one connection is one session, its first line registers it, its close ends it |
+| `socket.js` | the unix-socket server: one connection is one session, its first line registers it, a later `rename` line relabels it, its close ends it |
+| `session-name.js` | what Claude Code calls the session: `/rename` name from `~/.claude/sessions/<pid>.json` (nameSource `user`), else the `ai-title` from the transcript, else null → `basename(cwd)`; `mcp.js` re-checks every 15 s and renames |
 | `sessions.js` | the live table (id → `cwd`, `pid`, `label`, `claudeSession`, socket) plus the `queue` buffer, drained by the next session that registers |
 | `shots.js` | writes `shots/<session>/<key-slug>-<n>.jpg`; 2 MB cap (413) and JPEG magic bytes (415). The page never names a file |
 | `event.js` | `POST /notes` body → `{ content, meta: { url, key, count } }`; `content` is the same Markdown as Copy Markdown, with a `screenshot: <path>` line per stored shot |

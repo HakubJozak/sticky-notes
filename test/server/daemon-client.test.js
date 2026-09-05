@@ -87,6 +87,27 @@ describe("connectDaemon", () => {
     }
   })
 
+  it("renames its session on the daemon, and again after a reconnect", async () => {
+    let daemon = await start()
+    let client
+
+    try {
+      client = connectDaemon({ meta: { ...META }, onEvent: () => {}, log: () => {}, retryMs: RETRY_MS })
+      await until(async () => (await api(daemon.info, "/sessions")).length === 1)
+
+      client.rename("kz review")
+      await until(async () => (await api(daemon.info, "/sessions"))[0].label === "kz review")
+
+      daemon.stopServers()
+      daemon = await start()
+      await until(async () => (await api(daemon.info, "/sessions")).length === 1)
+      expect((await api(daemon.info, "/sessions"))[0].label).toBe("kz review")
+    } finally {
+      client?.close()
+      daemon?.stopServers()
+    }
+  })
+
   it("spawns a detached daemon when the socket is missing", async () => {
     spawnDaemon()
 

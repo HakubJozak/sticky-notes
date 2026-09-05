@@ -43,6 +43,15 @@ describe("createSessions", () => {
     expect(createSessions().deliver("s9", EVENT)).toBeNull()
   })
 
+  it("renames a live session and refuses an unknown one", () => {
+    const sessions = createSessions()
+    const { id } = sessions.register(socket(), META)
+
+    expect(sessions.rename(id, "kz review")).toBe(true)
+    expect(sessions.list()[0].label).toBe("kz review")
+    expect(sessions.rename("s99", "x")).toBe(false)
+  })
+
   it("queues events and flushes them to the next session that registers", () => {
     const sessions = createSessions()
 

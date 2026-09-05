@@ -10,6 +10,7 @@ const DEFAULT_RETRY_MS = 2000
 const SPAWN_COOLDOWN_MS = 10_000
 const SPAWNING = "spawning daemon"
 const REGISTER = "register"
+const RENAME = "rename"
 const EVENT = "event"
 const ECONNREFUSED = "ECONNREFUSED"
 
@@ -54,6 +55,12 @@ export function connectDaemon({ meta, onEvent, log, retryMs = DEFAULT_RETRY_MS }
     })
   }
 
+  // Later registrations (after a reconnect) carry the new label too.
+  function rename(label) {
+    meta.label = label
+    if (socket && !socket.connecting) writeLine(socket, { type: RENAME, label })
+  }
+
   function close() {
     closed = true
     clearTimeout(timer)
@@ -62,7 +69,7 @@ export function connectDaemon({ meta, onEvent, log, retryMs = DEFAULT_RETRY_MS }
 
   open()
 
-  return { close }
+  return { close, rename }
 }
 
 // Detached with its own stdio, so it outlives this process and Claude Code.

@@ -23,6 +23,15 @@ export function createSessions() {
     return session
   }
 
+  // Claude Code names sessions after they start (/rename, the auto title)
+  function rename(id, label) {
+    const session = live.get(id)
+    if (!session) return false
+
+    session.label = label
+    return true
+  }
+
   const list = () => [...live.values()].map(({ socket, ...row }) => row) // eslint-disable-line no-unused-vars
 
   const has = (id) => live.has(id)
@@ -45,6 +54,7 @@ export function createSessions() {
 
   return {
     register,
+    rename,
     list,
     has,
     deliver,
