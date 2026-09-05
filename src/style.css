@@ -188,6 +188,26 @@
   cursor: pointer;
 }
 
+/* Clear | Send: the two ways a batch ends, side by side */
+.sticky-notes-bar__go {
+  display: inline-flex;
+  align-items: stretch;
+}
+
+.sticky-notes-bar__button--clear {
+  height: 26px;
+  box-sizing: border-box;
+  padding: 0 8px;
+  border-color: #d9b93c;
+  color: #6b5a12;
+}
+
+.sticky-notes-bar__button--clear:hover:not(:disabled) {
+  color: #b3261e;
+  border-color: #b3261e;
+  background: rgba(179, 38, 30, 0.08);
+}
+
 .sticky-notes-bar__button--send {
   height: 26px;
   box-sizing: border-box;
@@ -315,12 +335,6 @@
   cursor: default;
 }
 
-.sticky-notes-bar__item--danger {
-  margin-top: 4px;
-  border-top: 1px solid #d9b93c;
-  color: #b3261e;
-}
-
 /* Vertical: a column on the right edge that wraps the pin — the pin is its
    bottom-right cell, the footer row of icons runs beside it. */
 .sticky-notes-bar--vertical {
@@ -383,7 +397,17 @@
   border-bottom: 0;
 }
 
+.sticky-notes-bar--vertical .sticky-notes-bar__go {
+  width: 100%;
+}
+
+.sticky-notes-bar--vertical .sticky-notes-bar__button--clear {
+  width: auto;
+}
+
 .sticky-notes-bar--vertical .sticky-notes-bar__button--send {
+  flex: 1;
+  width: auto;
   text-align: center;
 }
 

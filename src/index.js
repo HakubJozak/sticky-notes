@@ -17,6 +17,7 @@ const AUTO_SHOT_KEY = "sticky-notes:auto-shot"
 const AUTO_SHOT_OFF = "0"
 const AUTO_SHOT_PADDING = 16 // px around the noted element
 const SENT_MESSAGE = (label) => (label ? `sent to ${label}` : "sent")
+const CLEARED_SUFFIX = ", notes cleared"
 const SENDING_MESSAGE = "sending…"
 const QUEUED_MESSAGE = "queued for the next review session"
 const PICK_SESSION_MESSAGE = "pick a session first"
@@ -36,6 +37,7 @@ export function createStickyNotes(options = {}) {
   const pending = new Map() // note id → [jpeg base64], until sent
   const engineChannel = typeof options.channel === "string" // the app proxies to its own machine's daemon
   const connectAllowed = options.connect !== false // false from the Rails adapters: not the browser's daemon
+  const clearOnSend = options.clearOnSend !== false // a delivered batch is done; the page starts clean
 
   let notes = []
   let layer = null
@@ -120,6 +122,10 @@ export function createStickyNotes(options = {}) {
     const view = (root ?? document.body).ownerDocument.defaultView
     if (!view?.confirm?.(`Delete ${notes.length} notes?`)) return
 
+    forget()
+  }
+
+  function forget() {
     notes = []
     save()
     prunePending()
@@ -242,7 +248,11 @@ export function createStickyNotes(options = {}) {
       const result = await channel.send(payload)
       pending.clear()
       countPending()
-      layer?.message(result.queued ? QUEUED_MESSAGE : SENT_MESSAGE(layer.sessionLabel()), MESSAGE_MS, OK)
+
+      const cleared = clearOnSend && rows.length > 0
+      if (cleared) forget() // delivered (or queued for delivery): the batch is off the page
+      const text = (result.queued ? QUEUED_MESSAGE : SENT_MESSAGE(layer?.sessionLabel())) + (cleared ? CLEARED_SUFFIX : "")
+      layer?.message(text, MESSAGE_MS, OK)
 
       return result
     } catch (error) {

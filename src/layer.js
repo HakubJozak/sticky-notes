@@ -60,7 +60,8 @@ const COPIED_MESSAGE = "copied"
 const NOT_COPIED_MESSAGE = "captured (clipboard blocked)"
 const MARKDOWN_LABEL = "Copy Markdown"
 const JSON_LABEL = "Copy JSON"
-const CLEAR_LABEL = "Delete all notes"
+const CLEAR_LABEL = "Clear"
+const CLEAR_TITLE = "delete all notes"
 const COLLAPSE_LABEL = "collapse"
 const REMOVE_LABEL = "remove note"
 const DRAG_HINT = "drag to move"
@@ -174,7 +175,10 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
         <button class="sticky-notes-bar__button sticky-notes-bar__tool" type="button" data-command="${SCREENSHOT_COMMAND}">${CAMERA_ICON}<span class="sticky-notes-bar__caption">${SCREENSHOT_LABEL}</span></button>
       </span>
       <span class="sticky-notes-bar__group sticky-notes-bar__group--deliver">
-        <button class="sticky-notes-bar__button sticky-notes-bar__button--send" type="button" data-command="${SEND_COMMAND}" ${SEND_ATTRIBUTE} hidden>${SEND_LABEL}</button>
+        <span class="sticky-notes-bar__go">
+          <button class="sticky-notes-bar__button sticky-notes-bar__button--clear" type="button" data-command="${CLEAR_COMMAND}" title="${CLEAR_TITLE}">${CLEAR_LABEL}</button>
+          <button class="sticky-notes-bar__button sticky-notes-bar__button--send" type="button" data-command="${SEND_COMMAND}" ${SEND_ATTRIBUTE} hidden>${SEND_LABEL}</button>
+        </span>
         <label class="sticky-notes-bar__auto" ${SEND_ATTRIBUTE} hidden><input type="checkbox" data-command="${AUTO_SHOT_COMMAND}"> ${AUTO_SHOT_LABEL}</label>
         <span class="sticky-notes-bar__shots" ${SEND_ATTRIBUTE} hidden></span>
         <button class="sticky-notes-bar__button" type="button" data-command="${CONNECT_COMMAND}" ${CONNECT_ATTRIBUTE}>${CONNECT_LABEL}</button>
@@ -185,7 +189,6 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
           <button class="sticky-notes-bar__item" type="button" data-command="${EXPORT_MARKDOWN_COMMAND}">${MARKDOWN_LABEL}</button>
           <button class="sticky-notes-bar__item" type="button" data-command="${EXPORT_JSON_COMMAND}">${JSON_LABEL}</button>
           <button class="sticky-notes-bar__item" type="button" data-command="${DOWNLOAD_COMMAND}" disabled>${DOWNLOAD_LABEL}</button>
-          <button class="sticky-notes-bar__item sticky-notes-bar__item--danger" type="button" data-command="${CLEAR_COMMAND}">${CLEAR_LABEL}</button>
         </div>
       </details>
       <span class="sticky-notes-bar__group sticky-notes-bar__group--tools">
@@ -194,7 +197,7 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
     picker = createPicker({ doc, storage, key, onOpen: onSessionsOpen })
     picker.el.setAttribute(SEND_ATTRIBUTE, "")
     picker.el.hidden = true
-    bar.querySelector(`[data-command="${SEND_COMMAND}"]`).before(picker.el) // joined: pick, then Send
+    bar.querySelector(".sticky-notes-bar__go").before(picker.el) // joined: pick, then Clear | Send
     moreEl = bar.querySelector(".sticky-notes-bar__more")
     layoutButton = bar.querySelector(`[data-command="${LAYOUT_COMMAND}"]`)
     layoutButton.before(moreEl) // ⋯ and the layout toggle share the footer row

@@ -156,6 +156,37 @@ describe("send feedback", () => {
     expect(toast().dataset.kind).toBe("ok")
   })
 
+  it("clears the delivered notes, and says so", async () => {
+    instance.toggle(true)
+    click(document.getElementById("save"))
+    expect(instance.notes).toHaveLength(1)
+
+    const sent = instance.send()
+    await tick()
+    channel.gate.release()
+    await sent
+
+    expect(instance.notes).toHaveLength(0)
+    expect(document.querySelectorAll(".sticky-note")).toHaveLength(0)
+    expect(toast().textContent).toBe("sent to portal, notes cleared")
+  })
+
+  it("keeps the notes when asked to", async () => {
+    const keeping = createStickyNotes({ key: "/keep", storage: fakeStorage(), channel, clearOnSend: false, root: document.body }).mount()
+    keeping.setAutoShot(false)
+    await tick()
+    keeping.toggle(true)
+    click(document.getElementById("save"))
+
+    const sent = keeping.send()
+    await tick()
+    channel.gate.release()
+    await sent
+
+    expect(keeping.notes).toHaveLength(1)
+    keeping.unmount()
+  })
+
   it("flags a failure in red and frees the button", async () => {
     const failing = { sessions: channel.sessions, send: async () => { throw new Error("boom") } }
     const broken = createStickyNotes({ key: "/broken", storage: fakeStorage(), channel: failing, root: document.body }).mount()

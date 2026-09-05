@@ -194,6 +194,7 @@ JSON (`export("json")`):
 | `root` | `document.body` | where the bar, notes and leader lines are appended |
 | `storage` | `localStorage` | anything with `getItem` / `setItem` / `removeItem` |
 | `anchors` | `["data-testid", "data-test"]` | attributes that count as strong anchors when building the CSS path |
+| `clearOnSend` | `true` | a successful **Send** deletes the notes it delivered; `false` keeps them on the page |
 
 Notes live under `sticky-notes:<key>`; a legacy `kz-notes:<key>` bucket is
 migrated on first read.
