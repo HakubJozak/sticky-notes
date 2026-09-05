@@ -178,8 +178,9 @@ it is a plain `mount()`.
 Gemspec next to `package.json`, turbo-rails layout. No `isolate_namespace` — the
 engine's `app/helpers` is then prepended to the host's `helpers_paths`, so
 `sticky_notes_tag` reaches controllers inheriting `ActionController::Base`
-directly. An initializer does `app.routes.append { mount ... => "/sticky-notes",
-as: "sticky_notes" }` when enabled, so a host edits nothing but its layout.
+directly. An initializer does `app.routes.prepend { mount ... => "/sticky-notes",
+as: "sticky_notes" }` when enabled, so a host edits nothing but its layout —
+prepended so a tenant catch-all (`/:account/:page`) cannot claim the script URL.
 
 - `StickyNotes::Rails.enabled?` — `config.sticky_notes.enabled` if set, else
   development or staging.

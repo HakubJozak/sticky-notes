@@ -9,10 +9,12 @@ module StickyNotes
       config.sticky_notes = ActiveSupport::OrderedOptions.new
 
       # Mount ourselves so a host needs zero edits beyond the layout tag.
+      # Prepended: a host's tenant catch-all (`/:account/:page`) would otherwise
+      # claim /sticky-notes/turbo.js and the overlay never loads.
       initializer "sticky_notes.routes" do |app|
         next unless StickyNotes::Rails.enabled?
 
-        app.routes.append do
+        app.routes.prepend do
           mount StickyNotes::Rails::Engine => "/sticky-notes", as: "sticky_notes"
         end
       end

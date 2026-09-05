@@ -24,7 +24,15 @@ end
 DummyApp.initialize!
 
 # A host controller gets `helper :all`, so sticky_notes_tag renders through it.
-class PagesController < ActionController::Base; end
+class PagesController < ActionController::Base
+  def show = render(plain: "host page")
+end
+
+# Hosts with tenant-style catch-alls (`/:account/:page`) would swallow
+# /sticky-notes/turbo.js if the engine were mounted after them.
+DummyApp.routes.draw do
+  get ":slug/:page", to: "pages#show"
+end
 
 # The real daemon in a private home on an ephemeral port — no doubles.
 module DaemonHarness
