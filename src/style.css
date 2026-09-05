@@ -274,6 +274,65 @@
   color: #b3261e;
 }
 
+/* Vertical: a column standing on the pin. Every control spans the width. */
+.sticky-notes-bar--vertical {
+  right: 16px;
+  bottom: 51px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  height: auto;
+  width: 200px;
+  padding: 8px;
+  border-right: 1px solid #d9b93c;
+  border-bottom: 0;
+}
+
+.sticky-notes-bar--vertical .sticky-notes-bar__group {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.sticky-notes-bar--vertical .sticky-notes-bar__group--deliver {
+  padding: 8px 0 0;
+  border-left: 0;
+  border-top: 1px solid #d9b93c;
+}
+
+.sticky-notes-bar--vertical .sticky-notes-bar__button,
+.sticky-notes-bar--vertical .sticky-notes-bar__auto,
+.sticky-notes-bar--vertical .sticky-notes-bar__shots {
+  box-sizing: border-box;
+  width: 100%;
+  text-align: left;
+}
+
+.sticky-notes-bar--vertical .sticky-notes-bar__auto,
+.sticky-notes-bar--vertical .sticky-notes-bar__shots {
+  padding: 3px 8px;
+}
+
+.sticky-notes-bar--vertical .sticky-notes-bar__picker {
+  width: 100%;
+  max-width: none;
+  border-right: 1px solid #d9b93c;
+  border-bottom: 0;
+}
+
+.sticky-notes-bar--vertical .sticky-notes-bar__button--send {
+  text-align: center;
+}
+
+.sticky-notes-bar--vertical .sticky-notes-bar__more > summary {
+  width: auto;
+  align-self: flex-start;
+}
+
+.sticky-notes-bar--vertical .sticky-notes-bar__menu {
+  right: calc(100% + 12px);
+  bottom: 0;
+}
+
 /* Quiet status above the pin: what just happened, in the colour of how it went. */
 .sticky-notes-toast {
   position: fixed;
@@ -289,6 +348,11 @@
   box-shadow: 2px 3px 0 rgba(0, 0, 0, 0.18);
   font: 12px "IBM Plex Mono", ui-monospace, Menlo, monospace;
   animation: sticky-notes-rise 0.15s ease-out;
+}
+
+.sticky-notes-toast--aside {
+  right: 224px; /* 16px + the 200px column + 8px */
+  bottom: 16px;
 }
 
 .sticky-notes-toast[data-kind="ok"] {

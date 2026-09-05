@@ -15,6 +15,11 @@ const ESCAPE_KEY = "Escape"
 const BAR_STATE_KEY = "sticky-notes:bar" // per browser, not per page: the reviewer opened the toolbar
 const BAR_OPEN = "open"
 const BAR_CLOSED = "closed"
+const LAYOUT_KEY = "sticky-notes:layout"
+const VERTICAL = "vertical"
+const HORIZONTAL = "horizontal"
+const VERTICAL_CLASS = "sticky-notes-bar--vertical"
+const ASIDE_CLASS = "sticky-notes-toast--aside" // the toast steps left when the column is up
 
 // toast kinds — the colour says how it went before the text is read
 export const INFO = "info"
@@ -40,6 +45,7 @@ const SEND_COMMAND = "send"
 const AUTO_SHOT_COMMAND = "auto-shot"
 const CONNECT_COMMAND = "connect"
 const PIN_COMMAND = "pin"
+const LAYOUT_COMMAND = "layout"
 
 const TOGGLE_LABEL = "✎ Notes"
 const SCREENSHOT_LABEL = "▭ Screenshot"
@@ -59,6 +65,7 @@ const NOTE_PLACEHOLDER = "note…"
 const SEND_LABEL = "Send"
 const PIN_LABEL = "sticky notes"
 const MORE_LABEL = "more"
+const LAYOUT_LABEL = { [HORIZONTAL]: "Stack vertically", [VERTICAL]: "Lay out horizontally" } // what the click does
 const MORE_GLYPH = "⋯"
 const CAPTURING_LABEL = (done, total) => `capturing ${done}/${total}`
 const SENDING_LABEL = "sending…"
@@ -91,6 +98,8 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
   let toast = null
   let sendButton = null
   let moreEl = null
+  let layoutButton = null
+  let layout = HORIZONTAL
   let toggleButton = null
   let countEl = null
   let exportPane = null
@@ -168,6 +177,7 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
           <button class="sticky-notes-bar__item" type="button" data-command="${EXPORT_MARKDOWN_COMMAND}">${MARKDOWN_LABEL}</button>
           <button class="sticky-notes-bar__item" type="button" data-command="${EXPORT_JSON_COMMAND}">${JSON_LABEL}</button>
           <button class="sticky-notes-bar__item" type="button" data-command="${DOWNLOAD_COMMAND}" disabled>${DOWNLOAD_LABEL}</button>
+          <button class="sticky-notes-bar__item" type="button" data-command="${LAYOUT_COMMAND}"></button>
           <button class="sticky-notes-bar__item sticky-notes-bar__item--danger" type="button" data-command="${CLEAR_COMMAND}">${CLEAR_LABEL}</button>
         </div>
       </details>`
@@ -176,6 +186,7 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
     picker.el.hidden = true
     bar.querySelector(`[data-command="${SEND_COMMAND}"]`).before(picker.el) // joined: pick, then Send
     moreEl = bar.querySelector(".sticky-notes-bar__more")
+    layoutButton = bar.querySelector(`[data-command="${LAYOUT_COMMAND}"]`)
     shotsEl = bar.querySelector(".sticky-notes-bar__shots")
     autoShotInput = bar.querySelector(`[data-command="${AUTO_SHOT_COMMAND}"]`)
     toggleButton = bar.querySelector(`[data-command="${TOGGLE_COMMAND}"]`)
@@ -198,7 +209,25 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
 
     bar.addEventListener("click", onBarClick)
     pin.addEventListener("click", () => setOpen(bar.hidden))
+    setLayout(readItem(LAYOUT_KEY) === VERTICAL ? VERTICAL : HORIZONTAL)
     updatePin()
+  }
+
+  // Horizontal: a strip left of the pin, auto-shot beside Send. Vertical: a
+  // column above the pin, auto-shot right under Screenshot where it belongs.
+  function setLayout(next) {
+    layout = next
+    writeItem(LAYOUT_KEY, layout)
+    bar.classList.toggle(VERTICAL_CLASS, layout === VERTICAL)
+    layoutButton.textContent = LAYOUT_LABEL[layout]
+
+    const anchor = layout === VERTICAL ? bar.querySelector(`[data-command="${SCREENSHOT_COMMAND}"]`) : sendButton
+    anchor.after(autoShotInput.closest(".sticky-notes-bar__auto"), shotsEl)
+    placeToast()
+  }
+
+  function placeToast() {
+    toast.classList.toggle(ASIDE_CLASS, layout === VERTICAL && !bar.hidden)
   }
 
   // Folding the bar ends picking too: the pressed ✎ would be out of sight.
@@ -206,6 +235,7 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
     bar.hidden = !open
     moreEl.open = false
     pin.setAttribute("aria-expanded", String(open))
+    placeToast()
     writeItem(BAR_STATE_KEY, open ? BAR_OPEN : BAR_CLOSED)
     if (!open) setPicking(false)
   }
@@ -230,6 +260,7 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
     if (command === SEND_COMMAND) onSend()
     if (command === AUTO_SHOT_COMMAND) onAutoShot(event.target.checked)
     if (command === CONNECT_COMMAND) onConnect()
+    if (command === LAYOUT_COMMAND) setLayout(layout === VERTICAL ? HORIZONTAL : VERTICAL)
   }
 
   function listen() {
@@ -574,6 +605,7 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
     setChannel,
     setConnectAllowed,
     setSending,
+    setLayout,
     session,
     sessionLabel,
     refreshSessions,
