@@ -66,6 +66,11 @@ const SEND_LABEL = "Send"
 const PIN_LABEL = "sticky notes"
 const MORE_LABEL = "more"
 const LAYOUT_LABEL = { [HORIZONTAL]: "Stack vertically", [VERTICAL]: "Lay out horizontally" } // what the click does
+// the icon shows the layout a click gives: bars stacked, or bars in a row
+const LAYOUT_ICON = {
+  [HORIZONTAL]: `<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M2 2h12v3H2zM2 6.5h12v3H2zM2 11h12v3H2z"/></svg>`,
+  [VERTICAL]: `<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M2 2h3v12H2zM6.5 2h3v12h-3zM11 2h3v12h-3z"/></svg>`,
+}
 const MORE_GLYPH = "⋯"
 const CAPTURING_LABEL = (done, total) => `capturing ${done}/${total}`
 const SENDING_LABEL = "sending…"
@@ -172,21 +177,24 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
         <button class="sticky-notes-bar__button" type="button" data-command="${CONNECT_COMMAND}" ${CONNECT_ATTRIBUTE}>${CONNECT_LABEL}</button>
       </span>
       <details class="sticky-notes-bar__more">
-        <summary class="sticky-notes-bar__button" title="${MORE_LABEL}" aria-label="${MORE_LABEL}">${MORE_GLYPH}</summary>
+        <summary class="sticky-notes-bar__button sticky-notes-bar__button--icon" title="${MORE_LABEL}" aria-label="${MORE_LABEL}">${MORE_GLYPH}</summary>
         <div class="sticky-notes-bar__menu">
           <button class="sticky-notes-bar__item" type="button" data-command="${EXPORT_MARKDOWN_COMMAND}">${MARKDOWN_LABEL}</button>
           <button class="sticky-notes-bar__item" type="button" data-command="${EXPORT_JSON_COMMAND}">${JSON_LABEL}</button>
           <button class="sticky-notes-bar__item" type="button" data-command="${DOWNLOAD_COMMAND}" disabled>${DOWNLOAD_LABEL}</button>
-          <button class="sticky-notes-bar__item" type="button" data-command="${LAYOUT_COMMAND}"></button>
           <button class="sticky-notes-bar__item sticky-notes-bar__item--danger" type="button" data-command="${CLEAR_COMMAND}">${CLEAR_LABEL}</button>
         </div>
-      </details>`
+      </details>
+      <span class="sticky-notes-bar__group sticky-notes-bar__group--tools">
+        <button class="sticky-notes-bar__button sticky-notes-bar__button--icon" type="button" data-command="${LAYOUT_COMMAND}"></button>
+      </span>`
     picker = createPicker({ doc, storage, key, onOpen: onSessionsOpen })
     picker.el.setAttribute(SEND_ATTRIBUTE, "")
     picker.el.hidden = true
     bar.querySelector(`[data-command="${SEND_COMMAND}"]`).before(picker.el) // joined: pick, then Send
     moreEl = bar.querySelector(".sticky-notes-bar__more")
     layoutButton = bar.querySelector(`[data-command="${LAYOUT_COMMAND}"]`)
+    layoutButton.before(moreEl) // ⋯ and the layout toggle share the footer row
     shotsEl = bar.querySelector(".sticky-notes-bar__shots")
     autoShotInput = bar.querySelector(`[data-command="${AUTO_SHOT_COMMAND}"]`)
     toggleButton = bar.querySelector(`[data-command="${TOGGLE_COMMAND}"]`)
@@ -219,7 +227,9 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
     layout = next
     writeItem(LAYOUT_KEY, layout)
     bar.classList.toggle(VERTICAL_CLASS, layout === VERTICAL)
-    layoutButton.textContent = LAYOUT_LABEL[layout]
+    layoutButton.innerHTML = LAYOUT_ICON[layout]
+    layoutButton.title = LAYOUT_LABEL[layout]
+    layoutButton.setAttribute("aria-label", LAYOUT_LABEL[layout])
 
     const anchor = layout === VERTICAL ? bar.querySelector(`[data-command="${SCREENSHOT_COMMAND}"]`) : sendButton
     anchor.after(autoShotInput.closest(".sticky-notes-bar__auto"), shotsEl)

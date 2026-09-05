@@ -99,13 +99,13 @@ describe("layout", () => {
   it("stacks vertically on request, auto-shot right under Screenshot, and remembers", () => {
     const auto = document.querySelector(".sticky-notes-bar__auto")
     expect(follows(sendButton(), auto)).toBe(true)
-    expect(layoutItem().textContent).toBe("Stack vertically")
+    expect(layoutItem().title).toBe("Stack vertically")
 
     click(layoutItem())
 
     expect(bar().classList.contains("sticky-notes-bar--vertical")).toBe(true)
     expect(follows(document.querySelector('[data-command="screenshot"]'), auto)).toBe(true)
-    expect(layoutItem().textContent).toBe("Lay out horizontally")
+    expect(layoutItem().title).toBe("Lay out horizontally")
     expect(storage.data.get("sticky-notes:layout")).toBe("vertical")
 
     click(layoutItem())

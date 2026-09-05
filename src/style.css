@@ -220,6 +220,22 @@
   white-space: nowrap;
 }
 
+/* ⋯ and the layout switch: icon-only, but never smaller than a fingertip */
+.sticky-notes-bar__group--tools {
+  gap: 2px;
+}
+
+.sticky-notes-bar__button--icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  font-size: 16px;
+  line-height: 1;
+}
+
 /* ⋯ — exports, download, delete: needed, not often */
 .sticky-notes-bar__more {
   position: relative;
@@ -227,9 +243,6 @@
 
 .sticky-notes-bar__more > summary {
   list-style: none;
-  padding: 5px 6px;
-  font-size: 16px;
-  line-height: 14px;
 }
 
 .sticky-notes-bar__more > summary::-webkit-details-marker {
@@ -274,10 +287,11 @@
   color: #b3261e;
 }
 
-/* Vertical: a column standing on the pin. Every control spans the width. */
+/* Vertical: a column on the right edge that wraps the pin — the pin is its
+   bottom-right cell, the footer row of icons runs beside it. */
 .sticky-notes-bar--vertical {
-  right: 16px;
-  bottom: 51px;
+  right: 8px;
+  bottom: 8px;
   flex-direction: column;
   align-items: stretch;
   gap: 8px;
@@ -285,7 +299,6 @@
   width: 200px;
   padding: 8px;
   border-right: 1px solid #d9b93c;
-  border-bottom: 0;
 }
 
 .sticky-notes-bar--vertical .sticky-notes-bar__group {
@@ -323,9 +336,19 @@
   text-align: center;
 }
 
-.sticky-notes-bar--vertical .sticky-notes-bar__more > summary {
-  width: auto;
-  align-self: flex-start;
+/* footer: pin-sized icons, the pin's slot kept free on the right */
+.sticky-notes-bar--vertical .sticky-notes-bar__group--tools {
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  height: 36px;
+  margin-right: 44px;
+}
+
+.sticky-notes-bar--vertical .sticky-notes-bar__button--icon {
+  width: 36px;
+  height: 36px;
+  border-color: #d9b93c;
 }
 
 .sticky-notes-bar--vertical .sticky-notes-bar__menu {
@@ -351,7 +374,7 @@
 }
 
 .sticky-notes-toast--aside {
-  right: 224px; /* 16px + the 200px column + 8px */
+  right: 216px; /* 8px + the 200px column + 8px */
   bottom: 16px;
 }
 
