@@ -139,5 +139,5 @@ does not leak in, z-index near max. Edit `src/`, never `dist/` — rebuild with
 - Telling the user to run plain `claude` and then expecting Send to work → the session never registers and never appears in the picker. It is `claude-review`, always.
 - `claude-review --continue` from `~` → resumes whichever conversation was last on the machine. Use `--resume <id>`.
 - Assuming the daemon died with the session → it stays, by design. Stop it with `node ~/projects/sticky-notes/server/daemon.js stop` (`sticky-notes-daemon stop` when the package is linked).
-- Debugging the banner line `server:sticky-notes · no MCP server configured with that name` → cosmetic; `/mcp` shows the server connected and events do arrive.
+- Debugging the banner line `server:sticky-notes · no MCP server configured with that name` → cosmetic; the check only scans the file-backed MCP scopes and `--mcp-config` servers live in the `dynamic` one. `/mcp` shows the server connected and events do arrive.
 - Forgetting that the first `claude-review` in a new folder asks to trust the folder *before* the development-channels warning → both dialogs must be answered or no channel exists.
