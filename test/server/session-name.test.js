@@ -27,13 +27,15 @@ describe("session name", () => {
     expect(projectDir("/home/dev/Sync/Documents/hostetin-prihlaska")).toBe("-home-dev-Sync-Documents-hostetin-prihlaska")
   })
 
-  it("prefers the name the user gave over the auto title, and ignores derived names", () => {
+  it("prefers the user's name, then the auto title, then Claude Code's derived name", () => {
     const namer = createSessionNamer({ sessionId: ID, cwd: CWD, home })
     expect(namer.resolve()).toBeNull()
 
-    session("1.json", { sessionId: ID, name: "dev-2f", nameSource: "derived" })
     session("2.json", { sessionId: "other", name: "portal", nameSource: "user" })
     expect(namer.resolve()).toBeNull()
+
+    session("1.json", { sessionId: ID, name: "dev-2f", nameSource: "derived" })
+    expect(namer.resolve()).toBe("dev-2f")
 
     transcript({ type: "user", message: "hi" }, { type: "ai-title", aiTitle: "Krouzitko catalogue review", sessionId: ID })
     expect(namer.resolve()).toBe("Krouzitko catalogue review")

@@ -5,6 +5,7 @@ const KEY = "/kids/12"
 const STORAGE_KEY = "sticky-notes:session:/kids/12"
 const A = { id: "s1", cwd: "/home/dev/projects/krouzitko", label: "krouzitko" }
 const B = { id: "s2", cwd: "/home/dev", label: "home" }
+const C = { id: "s3", cwd: "/home/dev", label: "dev-33" }
 
 function fakeStorage(seed = {}) {
   const data = new Map(Object.entries(seed))
@@ -27,7 +28,7 @@ describe("createPicker", () => {
     p.refresh([A])
 
     expect(p.value).toBe("s1")
-    expect(labels(p.el)).toEqual(["krouzitko · /home/dev/projects/krouzitko", QUEUE_LABEL])
+    expect(labels(p.el)).toEqual(["krouzitko", QUEUE_LABEL])
   })
 
   it("keeps the order it is given and asks to pick when there are several", () => {
@@ -36,6 +37,16 @@ describe("createPicker", () => {
 
     expect(p.value).toBe("")
     expect(labels(p.el)).toEqual([PICK_LABEL, "home · /home/dev", "krouzitko · /home/dev/projects/krouzitko", QUEUE_LABEL])
+  })
+
+  it("shows the folder only when it tells sessions apart", () => {
+    const p = picker()
+    p.refresh([B, C])
+
+    expect(labels(p.el)).toEqual([PICK_LABEL, "home", "dev-33", QUEUE_LABEL])
+
+    p.el.value = "s3"
+    expect(p.label).toBe("dev-33")
   })
 
   it("remembers the choice per key and restores it while that session is live", () => {

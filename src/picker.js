@@ -24,7 +24,8 @@ export function createPicker({ doc, storage, key, onOpen }) {
     el.innerHTML = ""
 
     if (!chosen) el.append(option(NONE, PICK_LABEL, { disabled: true }))
-    for (const session of sessions) el.append(option(session.id, session.label + SEPARATOR + session.cwd, { label: session.label }))
+    const folders = new Set(sessions.map((session) => session.cwd)) // one folder: the name is all that differs
+    for (const session of sessions) el.append(option(session.id, folders.size > 1 ? session.label + SEPARATOR + session.cwd : session.label, { label: session.label }))
     el.append(option(QUEUE, QUEUE_LABEL))
 
     el.value = chosen ?? NONE

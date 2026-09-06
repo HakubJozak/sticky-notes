@@ -107,7 +107,7 @@ Plain node, no build, no npm deps. State lives under `~/.cache/sticky-notes/`
 | `daemon-client.js` | the socket to the daemon: spawns it detached when the socket file is missing, retries every 2 s on close, respawns on `ECONNREFUSED` (only a fresh daemon can replace a stale socket file) |
 | `http.js` | the loopback API: `GET /sessions`, `POST /notes`, `POST /stop`, all behind `Authorization: Bearer <token>`; CORS `*` because the token is the gate; 16 MB body cap |
 | `socket.js` | the unix-socket server: one connection is one session, its first line registers it, a later `rename` line relabels it, its close ends it |
-| `session-name.js` | what Claude Code calls the session: `/rename` name from `~/.claude/sessions/<pid>.json` (nameSource `user`), else the `ai-title` from the transcript, else null → `basename(cwd)`; `mcp.js` re-checks every 15 s and renames |
+| `session-name.js` | what Claude Code calls the session: `/rename` name from `~/.claude/sessions/<pid>.json` (nameSource `user`), else the `ai-title` from the transcript, else the derived name (`dev-2f`, nameSource `derived`), else null → `basename(cwd)`; `mcp.js` re-checks every 15 s and renames |
 | `sessions.js` | the live table (id → `cwd`, `pid`, `label`, `claudeSession`, socket) plus the `queue` buffer, drained by the next session that registers |
 | `shots.js` | writes `shots/<session>/<key-slug>-<n>.jpg`; 2 MB cap (413) and JPEG magic bytes (415). The page never names a file |
 | `event.js` | `POST /notes` body → `{ content, meta: { url, key, count } }`; `content` is the same Markdown as Copy Markdown, with a `screenshot: <path>` line per stored shot |
@@ -119,7 +119,7 @@ Plain node, no build, no npm deps. State lives under `~/.cache/sticky-notes/`
 | element | class |
 |---|---|
 | pin (fixed, bottom-right; the bar folds behind it, `sticky-notes:bar` remembers) | `.sticky-notes-pin` (`[aria-expanded=true]` while the bar shows), `.sticky-notes-pin__count` |
-| toast (above the pin, `data-kind` info / ok / error) | `.sticky-notes-toast` |
+| toast (top-right corner, clear of the bar in both layouts; `data-kind` info / ok / error) | `.sticky-notes-toast` |
 | bar (fixed, left of the pin) | `.sticky-notes-bar`, buttons `.sticky-notes-bar__button` (`[aria-pressed=true]` while picking, `--busy` with the "capturing 2/5" / "sending…" label while Send runs), `.sticky-notes-bar__count` (inside Add note), `--vertical` (column wrapping the pin, `sticky-notes:layout` remembers), `.sticky-notes-bar__tool` (Add note / Screenshot / Clear tiles; `__shoot` = Screenshot + `__auto` checkbox with `__check`), `.sticky-notes-bar__group--tools` (⋯ + icon layout toggle `data-command="layout"`), `.sticky-notes-bar__group` (`--deliver` = picker + `--send`; a successful Send clears the notes unless `clearOnSend: false`), `.sticky-notes-bar__more` (`<details>` ⋯ menu: `__menu`, `__item`), `.sticky-notes-bar__picker` (session `<select>`), `.sticky-notes-bar__auto` (auto-shot checkbox label), `.sticky-notes-bar__shots` (unsent shot count) |
 | export pane | `.sticky-notes-export` |
 | leaders svg | `.sticky-notes-leaders` |
