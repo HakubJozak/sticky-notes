@@ -451,12 +451,13 @@
   bottom: 0;
 }
 
-/* Quiet status above the pin: what just happened, in the colour of how it went. */
+/* Quiet status in the top-right corner, clear of the bar in either layout:
+   what just happened, in the colour of how it went. */
 .sticky-notes-toast {
   position: fixed;
+  top: 16px;
   right: 16px;
-  bottom: 60px;
-  z-index: 2147482929; /* under the bar: an open ⋯ menu covers it */
+  z-index: 2147482929;
   max-width: 320px;
   padding: 6px 10px;
   background: #fff3b0;
@@ -466,11 +467,6 @@
   box-shadow: 2px 3px 0 rgba(0, 0, 0, 0.18);
   font: 12px "IBM Plex Mono", ui-monospace, Menlo, monospace;
   animation: sticky-notes-rise 0.15s ease-out;
-}
-
-.sticky-notes-toast--aside {
-  right: 216px; /* 8px + the 200px column + 8px */
-  bottom: 16px;
 }
 
 .sticky-notes-toast[data-kind="ok"] {
@@ -488,7 +484,7 @@
 @keyframes sticky-notes-rise {
   from {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(-4px);
   }
 }
 

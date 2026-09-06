@@ -19,7 +19,6 @@ const LAYOUT_KEY = "sticky-notes:layout"
 const VERTICAL = "vertical"
 const HORIZONTAL = "horizontal"
 const VERTICAL_CLASS = "sticky-notes-bar--vertical"
-const ASIDE_CLASS = "sticky-notes-toast--aside" // the toast steps left when the column is up
 
 // toast kinds — the colour says how it went before the text is read
 export const INFO = "info"
@@ -236,11 +235,6 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
     layoutButton.innerHTML = LAYOUT_ICON[layout]
     layoutButton.title = LAYOUT_LABEL[layout]
     layoutButton.setAttribute("aria-label", LAYOUT_LABEL[layout])
-    placeToast()
-  }
-
-  function placeToast() {
-    toast.classList.toggle(ASIDE_CLASS, layout === VERTICAL && !bar.hidden)
   }
 
   // Folding the bar ends picking too: the pressed Add note would be out of sight.
@@ -248,7 +242,6 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
     bar.hidden = !open
     moreEl.open = false
     pin.setAttribute("aria-expanded", String(open))
-    placeToast()
     writeItem(BAR_STATE_KEY, open ? BAR_OPEN : BAR_CLOSED)
     if (!open) setPicking(false)
   }
@@ -323,7 +316,8 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
   }
 
   // ms: callers pass a longer time for anything the reviewer must actually read.
-  // The toast lives outside the bar, so it shows while the bar is folded too.
+  // The toast lives outside the bar, in the opposite corner: it shows while the
+  // bar is folded and never hides behind it in either layout.
   function message(text, ms = MESSAGE_MS, kind = INFO) {
     toast.textContent = text
     toast.dataset.kind = kind

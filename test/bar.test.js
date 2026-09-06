@@ -112,14 +112,14 @@ describe("layout", () => {
     expect(bar().classList.contains("sticky-notes-bar--vertical")).toBe(false)
   })
 
-  it("moves the toast beside an open column", () => {
+  it("keeps the toast in its own corner whatever the layout", () => {
     const vertical = createStickyNotes({ key: "/v", storage: fakeStorage({ "sticky-notes:layout": "vertical", "sticky-notes:bar": "open" }), channel: null, root: document.body }).mount()
 
     const last = [...document.querySelectorAll(".sticky-notes-toast")].at(-1)
-    expect(last.classList.contains("sticky-notes-toast--aside")).toBe(true)
+    expect(last.className).toBe("sticky-notes-toast")
 
-    click([...document.querySelectorAll(".sticky-notes-pin")].at(-1)) // folded: back above the pin
-    expect(last.classList.contains("sticky-notes-toast--aside")).toBe(false)
+    click([...document.querySelectorAll(".sticky-notes-pin")].at(-1))
+    expect(last.className).toBe("sticky-notes-toast")
     vertical.unmount()
   })
 })
