@@ -114,6 +114,7 @@ every note that carries one. Meta is `url`, `key`, `count`.
 | dotted leader | from note border to the element's top-left dot + numbered badge |
 | badge click · – | collapse / expand |
 | ✕ | remove (one click); **Clear** removes all (confirm) |
+| **N orphaned** (red, by Clear) | notes whose element the page no longer has: stored, counted and sent flagged, never drawn — one click deletes them |
 | Copy Markdown / JSON | clipboard + preview pane; URL + title in header; orphaned notes flagged |
 | ▭ Screenshot → drag rectangle | DOM re-render (not a true screenshot) of the area, copied to the clipboard; **Download** saves the last one as `<key-slug>-screenshot-<n>.png` — look in `~/Downloads` when the user mentions it. Programmatic: `instance.screenshot({ x, y, w, h })` → Blob |
 | **Send** (only with a channel) | every note plus its attached screenshots → the picked session as a channel event; "queued for the next review session" means it waits for the next `claude-review` |

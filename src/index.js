@@ -63,7 +63,7 @@ export function createStickyNotes(options = {}) {
     notes = store.load()
     layer = createLayer({
       root, key, storage,
-      onPick, onChange: save, onRemove, onClear: clear, onExport: exportNotes,
+      onPick, onChange: save, onRemove, onClear: clear, onDropOrphans: dropOrphans, onExport: exportNotes,
       onSend: send, onShot: attachScreenshot, onAutoShot: setAutoShot, onConnect: () => connect(), onSessionsOpen: refreshSessions,
     })
     layer.mount()
@@ -110,6 +110,13 @@ export function createStickyNotes(options = {}) {
 
   function onRemove(note) {
     notes = notes.filter((candidate) => candidate !== note)
+    save()
+    prunePending()
+    rerender()
+  }
+
+  function dropOrphans() {
+    notes = notes.filter((note) => !note.orphan)
     save()
     prunePending()
     rerender()

@@ -45,6 +45,7 @@ const AUTO_SHOT_COMMAND = "auto-shot"
 const CONNECT_COMMAND = "connect"
 const PIN_COMMAND = "pin"
 const LAYOUT_COMMAND = "layout"
+const DROP_ORPHANS_COMMAND = "drop-orphans"
 
 const TOGGLE_LABEL = "Add note"
 const SCREENSHOT_LABEL = "Screenshot"
@@ -61,6 +62,8 @@ const MARKDOWN_LABEL = "Copy Markdown"
 const JSON_LABEL = "Copy JSON"
 const CLEAR_LABEL = "Clear"
 const CLEAR_TITLE = "delete all notes"
+const ORPHANS_LABEL = (n) => `${n} orphaned`
+const ORPHANS_TITLE = "delete the notes whose element this page no longer has"
 const ERASER_ICON = `<svg viewBox="0 0 20 20" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12.3 2.3a1 1 0 0 1 1.4 0l4 4a1 1 0 0 1 0 1.4l-8.6 8.6H17a1 1 0 1 1 0 2H6.6a1 1 0 0 1-.7-.3l-3.6-3.6a1 1 0 0 1 0-1.4zM11 6.4 4.4 13l2.6 2.6L13.6 9z"/></svg>`
 const COLLAPSE_LABEL = "collapse"
 const REMOVE_LABEL = "remove note"
@@ -94,7 +97,7 @@ const LEADER_WIDTH = 1.5
 const LEADER_DASH = "2 4"
 const ANCHOR_DOT_RADIUS = 2.5
 
-export function createLayer({ root, key, storage, onPick, onChange, onRemove, onClear, onExport, onSend, onShot, onAutoShot, onConnect, onSessionsOpen }) {
+export function createLayer({ root, key, storage, onPick, onChange, onRemove, onClear, onDropOrphans, onExport, onSend, onShot, onAutoShot, onConnect, onSessionsOpen }) {
   const doc = root.ownerDocument
   const view = doc.defaultView
   const live = new Map() // note id → { el, box, badge, observer }
@@ -121,6 +124,7 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
   let downloadButton = null
   let picker = null
   let shotsEl = null
+  let orphansEl = null
   let autoShotInput = null
   let lastFocusedId = null // the note a fresh screenshot belongs to
   let channelOn = false // no channel → screenshots go to the clipboard, as before
@@ -177,6 +181,7 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
           <label class="sticky-notes-bar__auto" title="${AUTO_SHOT_TITLE}" ${SEND_ATTRIBUTE} hidden><input type="checkbox" data-command="${AUTO_SHOT_COMMAND}" aria-label="${AUTO_SHOT_TITLE}"><span class="sticky-notes-bar__check"></span></label>
         </span>
         <button class="sticky-notes-bar__button sticky-notes-bar__tool" type="button" data-command="${CLEAR_COMMAND}" title="${CLEAR_TITLE}">${ERASER_ICON}<span class="sticky-notes-bar__caption">${CLEAR_LABEL}</span></button>
+        <button class="sticky-notes-bar__button sticky-notes-bar__orphans" type="button" data-command="${DROP_ORPHANS_COMMAND}" title="${ORPHANS_TITLE}" hidden></button>
       </span>
       <span class="sticky-notes-bar__group sticky-notes-bar__group--deliver">
         <button class="sticky-notes-bar__button sticky-notes-bar__button--send" type="button" data-command="${SEND_COMMAND}" ${SEND_ATTRIBUTE} hidden>${SEND_LABEL}</button>
@@ -202,6 +207,7 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
     layoutButton = bar.querySelector(`[data-command="${LAYOUT_COMMAND}"]`)
     layoutButton.before(moreEl) // ⋯ and the layout toggle share the footer row
     shotsEl = bar.querySelector(".sticky-notes-bar__shots")
+    orphansEl = bar.querySelector(`[data-command="${DROP_ORPHANS_COMMAND}"]`)
     autoShotInput = bar.querySelector(`[data-command="${AUTO_SHOT_COMMAND}"]`)
     toggleButton = bar.querySelector(`[data-command="${TOGGLE_COMMAND}"]`)
     downloadButton = bar.querySelector(`[data-command="${DOWNLOAD_COMMAND}"]`)
@@ -246,6 +252,14 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
     if (!open) setPicking(false)
   }
 
+  // Orphans are stored and sent but never drawn: the bar is the only place
+  // the reviewer can see and drop them (the 03.09. Kroužítko heading notes).
+  function updateOrphans() {
+    const count = notes.filter((note) => note.orphan).length
+    orphansEl.textContent = ORPHANS_LABEL(count)
+    orphansEl.hidden = !count
+  }
+
   function updatePin() {
     pinCountEl.textContent = notes.length
     pinCountEl.hidden = !notes.length
@@ -263,6 +277,7 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
     if (command === EXPORT_MARKDOWN_COMMAND) onExport(MARKDOWN)
     if (command === EXPORT_JSON_COMMAND) onExport(JSON_FORMAT)
     if (command === CLEAR_COMMAND) onClear()
+    if (command === DROP_ORPHANS_COMMAND) onDropOrphans()
     if (command === SEND_COMMAND) onSend()
     if (command === AUTO_SHOT_COMMAND) onAutoShot(event.target.checked)
     if (command === CONNECT_COMMAND) onConnect()
@@ -401,6 +416,7 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
     notes.forEach(renderNote)
     countEl.textContent = notes.length
     countEl.hidden = !notes.length
+    updateOrphans()
     updatePin()
     drawLeaders()
   }

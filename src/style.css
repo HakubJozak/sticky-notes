@@ -301,6 +301,12 @@
   white-space: nowrap;
 }
 
+/* notes the page lost: a warning-coloured count, the click deletes them */
+.sticky-notes-bar__orphans {
+  color: #b3261e;
+  border-color: #b3261e;
+}
+
 /* ⋯ and the layout switch: icon-only, but never smaller than a fingertip */
 .sticky-notes-bar__group--tools {
   gap: 2px;

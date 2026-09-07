@@ -124,6 +124,32 @@ describe("layout", () => {
   })
 })
 
+describe("orphaned notes", () => {
+  const note = (id, path) => ({ id, path, anchored: true, text: "", ctx: "", note: "", created: "2026-09-03T00:00:00Z" })
+  const orphans = () => document.querySelector('[data-command="drop-orphans"]')
+  let storage, instance
+
+  beforeEach(() => {
+    document.body.innerHTML = '<main><button id="save">Save</button></main>'
+    storage = fakeStorage({ "sticky-notes:bar": "open", ["sticky-notes:" + KEY]: JSON.stringify([note("a", "#save"), note("b", "#gone"), note("c", "#steps > h2")]) })
+    instance = createStickyNotes({ key: KEY, storage, channel: null }).mount()
+  })
+
+  afterEach(() => instance.unmount())
+
+  it("names the ones the page no longer has and drops them on request", () => {
+    expect(document.querySelectorAll(".sticky-note").length).toBe(1)
+    expect(orphans().hidden).toBe(false)
+    expect(orphans().textContent).toBe("2 orphaned")
+
+    click(orphans())
+
+    expect(JSON.parse(storage.data.get("sticky-notes:" + KEY)).map((n) => n.id)).toEqual(["a"])
+    expect(orphans().hidden).toBe(true)
+    expect(document.querySelector(".sticky-notes-pin__count").textContent).toBe("1")
+  })
+})
+
 describe("send feedback", () => {
   let instance, channel
 
