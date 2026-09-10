@@ -1761,8 +1761,10 @@
     el.setAttribute("aria-label", PICK_LABEL);
     el.addEventListener("focus", onOpen);
     el.addEventListener("mousedown", onOpen);
-    el.addEventListener("change", () => remember(el.value));
+    el.addEventListener("change", () => remember(identity(rows.find((session) => session.id === el.value)) ?? el.value));
+    let rows = [];
     function refresh(sessions) {
+      rows = sessions;
       const chosen = choose(sessions);
       el.innerHTML = "";
       if (!chosen) el.append(option(NONE, PICK_LABEL, { disabled: true }));
@@ -1774,8 +1776,9 @@
     function choose(sessions) {
       if (sessions.length === 1) return sessions[0].id;
       const remembered = recall();
-      return sessions.some((session) => session.id === remembered) ? remembered : null;
+      return sessions.find((session) => identity(session) === remembered)?.id ?? null;
     }
+    const identity = (session) => session?.claudeSession ?? session?.id;
     function option(value, text, { disabled = false, label = text } = {}) {
       const node = doc.createElement("option");
       node.value = value;

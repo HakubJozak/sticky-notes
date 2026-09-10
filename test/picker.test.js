@@ -6,6 +6,7 @@ const STORAGE_KEY = "sticky-notes:session:/kids/12"
 const A = { id: "s1", cwd: "/home/dev/projects/krouzitko", label: "krouzitko" }
 const B = { id: "s2", cwd: "/home/dev", label: "home" }
 const C = { id: "s3", cwd: "/home/dev", label: "dev-33" }
+const CC = { id: "s4", cwd: "/home/dev", label: "review", claudeSession: "cc-review" }
 
 function fakeStorage(seed = {}) {
   const data = new Map(Object.entries(seed))
@@ -63,6 +64,24 @@ describe("createPicker", () => {
 
     again.refresh([A])
     expect(again.value).toBe("s1") // the remembered one is gone; single live session wins
+  })
+
+  it("keeps a picked Claude Code session across its MCP server reconnecting", () => {
+    const p = picker()
+    p.refresh([A, CC])
+    p.el.value = "s4"
+    p.el.dispatchEvent(new Event("change"))
+
+    expect(storage.data.get(STORAGE_KEY)).toBe("cc-review")
+
+    // Claude Code restarted (resume): same session, a fresh daemon id
+    const again = picker()
+    again.refresh([A, { ...CC, id: "s9" }])
+    expect(again.value).toBe("s9")
+
+    // the daemon restarted too: the old id now belongs to someone else
+    again.refresh([{ ...B, id: "s4" }, { ...CC, id: "s1" }])
+    expect(again.value).toBe("s1")
   })
 
   it("offers only the queue when nothing is live, without preselecting it", () => {

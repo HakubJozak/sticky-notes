@@ -62,7 +62,7 @@ instance = {
 | storage key | holds |
 |---|---|
 | `sticky-notes:<key>` | the notes; on first read migrated from legacy `kz-notes:<key>` (read, write under the new key, remove the old) |
-| `sticky-notes:session:<key>` | the session id picked for this page |
+| `sticky-notes:session:<key>` | the session picked for this page: its Claude Code session id (survives a restart/resume), else the daemon id |
 | `sticky-notes:pending:<key>` | count of attached but unsent screenshots, so the next mount can say "N screenshots lost" |
 | `sticky-notes:auto-shot` | global; `"0"` = off, anything else on |
 | `sticky-notes:daemon-token` | global; the token pasted into **Connect** for the direct path |
@@ -83,7 +83,7 @@ Note record: `{ id, path, anchored, text, ctx, note, created, dx, dy, w, h, coll
 | `geometry.js` | `anchorOf`, `initialOffset`, `placeNote`, `placeBadge`, leader endpoints |
 | `screenshot.js` | `selectRect(doc)` marquee → page rect; `captureRect(doc, rect)` → canvas, DOM re-render via modern-screenshot (document shifted by `translate(-x,-y)`, clipped to w×h); `captureElement(doc, el, padding)` via `paddedRect`; `toPng` / `toJpeg` (`jpegSize` downscales to `JPEG_MAX_EDGE` 1568 px at `JPEG_QUALITY` 0.85 — token cost follows pixel area); `download`, `copyImage` |
 | `channel.js` | `createChannel({ base, token, fetch })` → `{ sessions(), send(payload) }`, `ChannelError(status)`; `detectChannel({ base, token, storage, fetch })` picks the engine base with the page token, else a stored token + `DIRECT_BASE` (`http://127.0.0.1:47391`), else null; `readToken` / `saveToken` |
-| `picker.js` | the session `<select>`: one live session picks itself, otherwise the remembered id, otherwise "pick a session…"; `queue` is always offered and never automatic |
+| `picker.js` | the session `<select>`: one live session picks itself, otherwise the remembered session (matched by Claude Code session id, so it survives a Claude Code restart), otherwise "pick a session…"; `queue` is always offered and never automatic |
 | `slug.js` | `slug(key)` — file-name-safe page key, shared with the daemon so both name shots alike |
 | `stimulus.js` | `export default class StickyNotesController extends Controller` (see below) |
 | `turbo.js` | `attach(selector)` — mount into `[data-sticky-notes]`, re-mount on `turbo:load`, unmount on `turbo:before-cache`; listeners registered once per page |

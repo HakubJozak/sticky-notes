@@ -17,9 +17,12 @@ export function createPicker({ doc, storage, key, onOpen }) {
 
   el.addEventListener("focus", onOpen)
   el.addEventListener("mousedown", onOpen)
-  el.addEventListener("change", () => remember(el.value))
+  el.addEventListener("change", () => remember(identity(rows.find((session) => session.id === el.value)) ?? el.value))
+
+  let rows = [] // the last list shown, to look the picked session up on change
 
   function refresh(sessions) {
+    rows = sessions
     const chosen = choose(sessions)
     el.innerHTML = ""
 
@@ -35,8 +38,13 @@ export function createPicker({ doc, storage, key, onOpen }) {
     if (sessions.length === 1) return sessions[0].id
 
     const remembered = recall()
-    return sessions.some((session) => session.id === remembered) ? remembered : null
+    return sessions.find((session) => identity(session) === remembered)?.id ?? null
   }
+
+  // The daemon id is per socket: a Claude Code restart (resume) reconnects the
+  // MCP server under a new one, and a daemon restart reuses old ones for other
+  // sessions. The Claude Code session id survives both.
+  const identity = (session) => session?.claudeSession ?? session?.id
 
   function option(value, text, { disabled = false, label = text } = {}) {
     const node = doc.createElement("option")
