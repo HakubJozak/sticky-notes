@@ -1607,6 +1607,8 @@ const FILE_PREFIX = "screenshot";
 const MIN_EDGE = 1;
 const JPEG_MAX_EDGE = 1568;
 const JPEG_QUALITY = 0.85;
+const MAX_UNION_AREA = 6e6;
+const MAX_DEVICE_AREA = 16e6;
 const EXCLUDED = ["sticky-notes-bar", "sticky-notes-export", OVERLAY_CLASS];
 function selectRect(doc) {
   const view = doc.defaultView;
@@ -1665,12 +1667,11 @@ function selectRect(doc) {
     doc.addEventListener("keydown", onKey, true);
   });
 }
-function captureRect(doc, { x, y, w, h }) {
-  const view = doc.defaultView;
+function captureRect(doc, { x, y, w, h }, scale = doc.defaultView.devicePixelRatio || 1) {
   return domToCanvas(doc.documentElement, {
     width: w,
     height: h,
-    scale: view.devicePixelRatio || 1,
+    scale,
     style: { transform: `translate(${-x}px, ${-y}px)`, transformOrigin: "top left" },
     filter: (node) => !EXCLUDED.some((cls) => node.classList?.contains(cls))
   });
@@ -1688,12 +1689,57 @@ function paddedRect(box, scroll, page, padding) {
   };
 }
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
-function captureElement(doc, el, padding = 0) {
+function elementRect(doc, el, padding = 0) {
   const view = doc.defaultView;
   const page = doc.documentElement;
   const box = el.getBoundingClientRect();
-  const rect = paddedRect(box, { x: view.scrollX, y: view.scrollY }, { scrollWidth: page.scrollWidth, scrollHeight: page.scrollHeight }, padding);
-  return captureRect(doc, rect);
+  return paddedRect(box, { x: view.scrollX, y: view.scrollY }, { scrollWidth: page.scrollWidth, scrollHeight: page.scrollHeight }, padding);
+}
+async function captureRects(doc, rects, { onGroup = () => {
+} } = {}) {
+  const out = new Array(rects.length);
+  const groups = groupRects(rects);
+  for (const [n, group] of groups.entries()) {
+    onGroup(n, groups.length);
+    const union = unionOf(group.map(({ rect }) => rect));
+    const scale = renderScale(union, doc.defaultView.devicePixelRatio || 1);
+    const canvas = await captureRect(doc, union, scale);
+    for (const { index: index2, rect } of group) out[index2] = crop(doc, canvas, rect, union, scale);
+  }
+  return out;
+}
+function groupRects(rects, maxArea = MAX_UNION_AREA) {
+  const order = rects.map((rect, index2) => ({ index: index2, rect })).sort((a, b) => a.rect.y - b.rect.y || a.rect.x - b.rect.x);
+  const groups = [];
+  let open = null;
+  for (const item of order) {
+    const grown = open && unionOf([...open.map(({ rect }) => rect), item.rect]);
+    if (open && grown.w * grown.h <= maxArea) {
+      open.push(item);
+      continue;
+    }
+    open = [item];
+    groups.push(open);
+  }
+  return groups;
+}
+function unionOf(rects) {
+  const x = Math.min(...rects.map((r) => r.x));
+  const y = Math.min(...rects.map((r) => r.y));
+  const right = Math.max(...rects.map((r) => r.x + r.w));
+  const bottom = Math.max(...rects.map((r) => r.y + r.h));
+  return { x, y, w: right - x, h: bottom - y };
+}
+function renderScale({ w, h }, dpr, maxDeviceArea = MAX_DEVICE_AREA) {
+  return Math.min(dpr, Math.sqrt(maxDeviceArea / (w * h)));
+}
+function crop(doc, canvas, rect, union, scale) {
+  const out = doc.createElement("canvas");
+  out.width = Math.max(MIN_EDGE, Math.round(rect.w * scale));
+  out.height = Math.max(MIN_EDGE, Math.round(rect.h * scale));
+  out.dataset.scale = scale;
+  out.getContext("2d").drawImage(canvas, (rect.x - union.x) * scale, (rect.y - union.y) * scale, out.width, out.height, 0, 0, out.width, out.height);
+  return out;
 }
 const toPng = (canvas) => canvasToBlob(canvas, PNG);
 function jpegSize(cssWidth, cssHeight, maxEdge) {
@@ -1706,8 +1752,8 @@ function jpegSize(cssWidth, cssHeight, maxEdge) {
 async function toJpeg(canvas, { maxEdge = JPEG_MAX_EDGE, quality = JPEG_QUALITY } = {}) {
   const doc = canvas.ownerDocument;
   const view = doc.defaultView;
-  const dpr = view.devicePixelRatio || 1;
-  const { width, height } = jpegSize(canvas.width / dpr, canvas.height / dpr, maxEdge);
+  const scale = Number(canvas.dataset.scale) || view.devicePixelRatio || 1;
+  const { width, height } = jpegSize(canvas.width / scale, canvas.height / scale, maxEdge);
   const out = doc.createElement("canvas");
   out.width = width;
   out.height = height;
@@ -2588,10 +2634,10 @@ function createStickyNotes(options = {}) {
   }
   async function autoShots(doc, rows) {
     const todo = notes.slice().map((note, index2) => [index2, layer?.elementOf(note.id)]).filter(([index2, el]) => el && rows[index2] && !rows[index2].shots.length);
-    for (const [done, [index2, el]] of todo.entries()) {
-      layer.setSending({ done, total: todo.length });
-      rows[index2].shots = [await toJpeg(await captureElement(doc, el, AUTO_SHOT_PADDING))];
-    }
+    if (!todo.length) return;
+    const rects = todo.map(([, el]) => elementRect(doc, el, AUTO_SHOT_PADDING));
+    const canvases = await captureRects(doc, rects, { onGroup: (done, total) => layer.setSending({ done, total }) });
+    for (const [n, [index2]] of todo.entries()) rows[index2].shots = [await toJpeg(canvases[n])];
   }
   function setAutoShot(on) {
     autoShot = on;
@@ -2639,6 +2685,12 @@ function createStickyNotes(options = {}) {
     },
     get channel() {
       return channel;
+    },
+    get root() {
+      return root;
+    },
+    get mounted() {
+      return layer !== null;
     }
   };
   return instance;

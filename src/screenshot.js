@@ -15,6 +15,10 @@ const FILE_PREFIX = "screenshot"
 const MIN_EDGE = 1 // px; a canvas dimension of 0 makes toBlob resolve null
 export const JPEG_MAX_EDGE = 1568 // px; Claude's token cost follows pixel area
 export const JPEG_QUALITY = 0.85
+// Batch capture: rects whose union stays under this (CSS px²) share one render;
+// the device-pixel cap keeps that render's canvas inside browser limits.
+export const MAX_UNION_AREA = 6_000_000 // ≈ 1920 × 3125
+const MAX_DEVICE_AREA = 16_000_000 // ≈ 4000 × 4000
 
 // Our own chrome must not show up in the picture; notes and badges stay.
 const EXCLUDED = ["sticky-notes-bar", "sticky-notes-export", OVERLAY_CLASS]
@@ -93,13 +97,11 @@ export function selectRect(doc) {
 
 // Renders the whole document shifted by (-x, -y) into a w×h viewport — the
 // library clips to width/height, so only the rectangle gets rasterised.
-export function captureRect(doc, { x, y, w, h }) {
-  const view = doc.defaultView
-
+export function captureRect(doc, { x, y, w, h }, scale = doc.defaultView.devicePixelRatio || 1) {
   return domToCanvas(doc.documentElement, {
     width: w,
     height: h,
-    scale: view.devicePixelRatio || 1,
+    scale,
     style: { transform: `translate(${-x}px, ${-y}px)`, transformOrigin: "top left" },
     filter: (node) => !EXCLUDED.some((cls) => node.classList?.contains(cls)),
   })
@@ -125,13 +127,81 @@ export function paddedRect(box, scroll, page, padding) {
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max)
 
 // The element's box plus padding, clamped to the document — auto-shot uses it.
-export function captureElement(doc, el, padding = 0) {
+export function elementRect(doc, el, padding = 0) {
   const view = doc.defaultView
   const page = doc.documentElement
   const box = el.getBoundingClientRect()
-  const rect = paddedRect(box, { x: view.scrollX, y: view.scrollY }, { scrollWidth: page.scrollWidth, scrollHeight: page.scrollHeight }, padding)
 
-  return captureRect(doc, rect)
+  return paddedRect(box, { x: view.scrollX, y: view.scrollY }, { scrollWidth: page.scrollWidth, scrollHeight: page.scrollHeight }, padding)
+}
+
+export const captureElement = (doc, el, padding = 0) => captureRect(doc, elementRect(doc, el, padding))
+
+/* Cloning and inlining the document is the cost of a capture, not rasterising
+   it: five notes meant five clones (≈ 2 s each on a real page). Rects that lie
+   close together share one render of their union and are cropped out of it.
+   Progress callback: onGroup(done, total) before each render. */
+export async function captureRects(doc, rects, { onGroup = () => {} } = {}) {
+  const out = new Array(rects.length)
+  const groups = groupRects(rects)
+
+  for (const [n, group] of groups.entries()) {
+    onGroup(n, groups.length)
+    const union = unionOf(group.map(({ rect }) => rect))
+    const scale = renderScale(union, doc.defaultView.devicePixelRatio || 1)
+    const canvas = await captureRect(doc, union, scale)
+
+    for (const { index, rect } of group) out[index] = crop(doc, canvas, rect, union, scale)
+  }
+
+  return out
+}
+
+// Greedy, top to bottom: a rect joins the open group while their union stays
+// small enough; a far-away rect opens the next one. Pure, tested without a DOM.
+export function groupRects(rects, maxArea = MAX_UNION_AREA) {
+  const order = rects.map((rect, index) => ({ index, rect })).sort((a, b) => a.rect.y - b.rect.y || a.rect.x - b.rect.x)
+  const groups = []
+  let open = null
+
+  for (const item of order) {
+    const grown = open && unionOf([...open.map(({ rect }) => rect), item.rect])
+
+    if (open && grown.w * grown.h <= maxArea) {
+      open.push(item)
+      continue
+    }
+
+    open = [item]
+    groups.push(open)
+  }
+
+  return groups
+}
+
+export function unionOf(rects) {
+  const x = Math.min(...rects.map((r) => r.x))
+  const y = Math.min(...rects.map((r) => r.y))
+  const right = Math.max(...rects.map((r) => r.x + r.w))
+  const bottom = Math.max(...rects.map((r) => r.y + r.h))
+
+  return { x, y, w: right - x, h: bottom - y }
+}
+
+// Device pixels per CSS pixel for a render of this size: the screen's ratio,
+// lowered only when the union would blow past the canvas cap.
+export function renderScale({ w, h }, dpr, maxDeviceArea = MAX_DEVICE_AREA) {
+  return Math.min(dpr, Math.sqrt(maxDeviceArea / (w * h)))
+}
+
+function crop(doc, canvas, rect, union, scale) {
+  const out = doc.createElement("canvas")
+  out.width = Math.max(MIN_EDGE, Math.round(rect.w * scale))
+  out.height = Math.max(MIN_EDGE, Math.round(rect.h * scale))
+  out.dataset.scale = scale // toJpeg reads the CSS size back from it
+  out.getContext("2d").drawImage(canvas, (rect.x - union.x) * scale, (rect.y - union.y) * scale, out.width, out.height, 0, 0, out.width, out.height)
+
+  return out
 }
 
 export const toPng = (canvas) => canvasToBlob(canvas, PNG)
@@ -147,12 +217,12 @@ export function jpegSize(cssWidth, cssHeight, maxEdge) {
   }
 }
 
-// CSS scale (device pixels divided by dpr), long edge capped, JPEG → base64.
+// CSS scale (device pixels divided by the render scale), long edge capped, JPEG → base64.
 export async function toJpeg(canvas, { maxEdge = JPEG_MAX_EDGE, quality = JPEG_QUALITY } = {}) {
   const doc = canvas.ownerDocument
   const view = doc.defaultView
-  const dpr = view.devicePixelRatio || 1
-  const { width, height } = jpegSize(canvas.width / dpr, canvas.height / dpr, maxEdge)
+  const scale = Number(canvas.dataset.scale) || view.devicePixelRatio || 1
+  const { width, height } = jpegSize(canvas.width / scale, canvas.height / scale, maxEdge)
 
   const out = doc.createElement("canvas")
   out.width = width

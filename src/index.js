@@ -6,7 +6,7 @@ import { toMarkdown, toJson, JSON_FORMAT } from "./exporter.js"
 import { createLayer, OK, ERROR } from "./layer.js"
 import { DEFAULT_BOX, initialOffset } from "./geometry.js"
 import { createChannel, detectChannel, saveToken, DIRECT_BASE } from "./channel.js"
-import { captureElement, toJpeg } from "./screenshot.js"
+import { captureRects, elementRect, toJpeg } from "./screenshot.js"
 
 const DEFAULT_ANCHORS = ["data-testid", "data-test"]
 const ID_RADIX = 36
@@ -272,15 +272,16 @@ export function createStickyNotes(options = {}) {
   }
 
   // Every noted element without a manual screenshot gets one, so Claude sees
-  // what the note points at. Progress goes to the Send button: n of total.
+  // what the note points at. Progress goes to the Send button: n of total renders.
   async function autoShots(doc, rows) {
     // snapshot: capturing awaits, and a note pinned meanwhile has no row here
     const todo = notes.slice().map((note, index) => [index, layer?.elementOf(note.id)]).filter(([index, el]) => el && rows[index] && !rows[index].shots.length)
+    if (!todo.length) return
 
-    for (const [done, [index, el]] of todo.entries()) {
-      layer.setSending({ done, total: todo.length })
-      rows[index].shots = [await toJpeg(await captureElement(doc, el, AUTO_SHOT_PADDING))]
-    }
+    const rects = todo.map(([, el]) => elementRect(doc, el, AUTO_SHOT_PADDING))
+    const canvases = await captureRects(doc, rects, { onGroup: (done, total) => layer.setSending({ done, total }) })
+
+    for (const [n, [index]] of todo.entries()) rows[index].shots = [await toJpeg(canvases[n])]
   }
 
   function setAutoShot(on) {
@@ -338,6 +339,12 @@ export function createStickyNotes(options = {}) {
     },
     get channel() {
       return channel
+    },
+    get root() {
+      return root
+    },
+    get mounted() {
+      return layer !== null
     },
   }
 

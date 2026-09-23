@@ -56,6 +56,8 @@ instance = {
   connect(token?)                  // direct daemon path; no token = prompt(), then stored
   get notes()                      // readonly array of note records
   get channel()                    // the channel object, or null
+  get root()                       // the element the layer was mounted into
+  get mounted()                    // false after unmount()
 }
 ```
 
@@ -81,12 +83,12 @@ Note record: `{ id, path, anchored, text, ctx, note, created, dx, dy, w, h, coll
 | `exporter.js` | `toMarkdown(rows, { title, url })`, `toJson(...)`; every continuation line indented to the bullet width |
 | `layer.js` | DOM: bar, export pane, leaders SVG, note boxes, badges; drag/resize; picking mode listeners (AbortController) |
 | `geometry.js` | `anchorOf`, `initialOffset`, `placeNote`, `placeBadge`, leader endpoints |
-| `screenshot.js` | `selectRect(doc)` marquee → page rect; `captureRect(doc, rect)` → canvas, DOM re-render via modern-screenshot (document shifted by `translate(-x,-y)`, clipped to w×h); `captureElement(doc, el, padding)` via `paddedRect`; `toPng` / `toJpeg` (`jpegSize` downscales to `JPEG_MAX_EDGE` 1568 px at `JPEG_QUALITY` 0.85 — token cost follows pixel area); `download`, `copyImage` |
+| `screenshot.js` | `selectRect(doc)` marquee → page rect; `captureRect(doc, rect)` → canvas, DOM re-render via modern-screenshot (document shifted by `translate(-x,-y)`, clipped to w×h); `elementRect(doc, el, padding)` via `paddedRect`, `captureElement` = capture of it; `captureRects(doc, rects, { onGroup })` — auto-shot batch: `groupRects` clusters rects whose union stays under `MAX_UNION_AREA` (top to bottom, greedy), one render per cluster at `renderScale` (dpr, lowered for huge unions), crops drawn out of it (cloning the document is the cost, not rasterising); `toPng` / `toJpeg` (`jpegSize` downscales to `JPEG_MAX_EDGE` 1568 px at `JPEG_QUALITY` 0.85 — token cost follows pixel area); `download`, `copyImage` |
 | `channel.js` | `createChannel({ base, token, fetch })` → `{ sessions(), send(payload) }`, `ChannelError(status)`; `detectChannel({ base, token, storage, fetch })` picks the engine base with the page token, else a stored token + `DIRECT_BASE` (`http://127.0.0.1:47391`), else null; `readToken` / `saveToken` |
 | `picker.js` | the session `<select>`: one live session picks itself, otherwise the remembered session (matched by Claude Code session id, so it survives a Claude Code restart), otherwise "pick a session…"; `queue` is always offered and never automatic |
 | `slug.js` | `slug(key)` — file-name-safe page key, shared with the daemon so both name shots alike |
 | `stimulus.js` | `export default class StickyNotesController extends Controller` (see below) |
-| `turbo.js` | `attach(selector)` — mount into `[data-sticky-notes]`, re-mount on `turbo:load`, unmount on `turbo:before-cache`; listeners registered once per page |
+| `turbo.js` | `attach(selector)` — mount into `[data-sticky-notes]`, re-mount on `turbo:load` / `turbo:render` only when the element changed (`instance.root` / `instance.mounted`), unmount on `turbo:before-cache`; listeners registered once per page |
 | `style.css` | all styles, classes below |
 
 Keep functions small, early returns, a one-line *why* comment where the
