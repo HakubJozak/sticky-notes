@@ -258,7 +258,8 @@ daemon (one per machine) is spawned by the first session that needs it.
 
 Bar controls, once a channel answers: **Send** (→ the picked session, or
 `queue` for the next one), the **session picker** (live sessions, this app's
-first), **auto-shot** (a JPEG of every noted element rides along; on by
+first; the last pick is pre-selected on every page while it is live),
+**Auto-shot on Send** under ⋯ (a JPEG of every noted element rides along; on by
 default) and a count of manually attached ▭ Screenshots.
 
 Rails hosts proxy through the app — remote browsing works, the daemon token

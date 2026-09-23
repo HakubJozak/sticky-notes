@@ -1,16 +1,17 @@
 /* Which Claude Code session gets the notes. The daemon lists them (already
-   ordered by the engine for this app); the reviewer decides. One live session
-   picks itself; "queue" is always an explicit choice. */
+   ordered by the engine for this app); the reviewer decides once — the pick is
+   remembered for every page and pre-selected while that session is live. One
+   live session picks itself; "queue" is always an explicit choice. */
 export const QUEUE = "queue"
 export const QUEUE_LABEL = "queue for next review session"
 export const PICK_LABEL = "pick a session…"
 
 const CLASS = "sticky-notes-bar__picker"
-const STORAGE_PREFIX = "sticky-notes:session:"
+const STORAGE_KEY = "sticky-notes:session"
 const SEPARATOR = " · "
 const NONE = ""
 
-export function createPicker({ doc, storage, key, onOpen }) {
+export function createPicker({ doc, storage, onOpen }) {
   const el = doc.createElement("select")
   el.className = CLASS
   el.setAttribute("aria-label", PICK_LABEL)
@@ -58,7 +59,7 @@ export function createPicker({ doc, storage, key, onOpen }) {
 
   function remember(id) {
     try {
-      storage.setItem(STORAGE_PREFIX + key, id)
+      storage.setItem(STORAGE_KEY, id)
     } catch {
       // private mode: the choice lasts for this page view
     }
@@ -66,7 +67,7 @@ export function createPicker({ doc, storage, key, onOpen }) {
 
   function recall() {
     try {
-      return storage.getItem(STORAGE_PREFIX + key)
+      return storage.getItem(STORAGE_KEY)
     } catch {
       return null
     }

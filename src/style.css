@@ -115,7 +115,7 @@
 
 /* groups are separated by a hairline, not by boxes */
 .sticky-notes-bar__group--deliver,
-.sticky-notes-bar__group--tools {
+.sticky-notes-bar__more {
   gap: 6px;
   padding-left: 8px;
   border-left: 1px solid var(--sn-hairline);
@@ -213,65 +213,6 @@
   color: var(--sn-danger);
 }
 
-/* Screenshot and its auto-shot box: one row in both layouts */
-.sticky-notes-bar__shoot {
-  display: inline-flex;
-  align-items: center;
-}
-
-/* auto-shot: a small box beside the camera; a yellow check when it is on */
-.sticky-notes-bar__auto {
-  display: inline-flex;
-  align-items: center;
-  height: 40px;
-  padding: 0 6px 0 2px;
-  cursor: pointer;
-}
-
-.sticky-notes-bar__auto:hover {
-  background: var(--sn-graphite-2);
-}
-
-.sticky-notes-bar__auto input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: 0;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.sticky-notes-bar__check {
-  position: relative;
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  box-sizing: border-box;
-  border: 1.5px solid var(--sn-chrome-muted);
-}
-
-.sticky-notes-bar__auto input:checked + .sticky-notes-bar__check {
-  border-color: var(--sn-signal);
-  background: var(--sn-signal);
-}
-
-.sticky-notes-bar__auto input:checked + .sticky-notes-bar__check::after {
-  content: "";
-  position: absolute;
-  left: 3px;
-  top: 0;
-  width: 4px;
-  height: 8px;
-  border: solid var(--sn-graphite);
-  border-width: 0 2px 2px 0;
-  transform: rotate(40deg);
-}
-
-.sticky-notes-bar__auto input:focus-visible + .sticky-notes-bar__check {
-  outline: 2px solid var(--sn-signal);
-  outline-offset: 2px;
-}
-
 /* notes the page lost: a warning-coloured count, the click deletes them */
 .sticky-notes-bar__orphans {
   color: var(--sn-danger);
@@ -348,7 +289,7 @@
   }
 }
 
-/* ⋯ and the layout switch: icon-only, but never smaller than a fingertip */
+/* ⋯: icon-only, but never smaller than a fingertip */
 .sticky-notes-bar__button--icon {
   display: inline-flex;
   align-items: center;
@@ -405,102 +346,54 @@
   cursor: default;
 }
 
-/* Vertical: a column on the right edge that wraps the pin — the pin is its
-   bottom-right cell, the footer row of icons runs beside it. */
-.sticky-notes-bar--vertical {
-  right: 8px;
-  bottom: 8px;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 6px;
-  height: auto;
-  width: 188px;
-  padding: 6px 8px 8px;
-}
-
-.sticky-notes-bar--vertical .sticky-notes-bar__group {
-  flex-direction: column;
-  align-items: stretch;
-}
-
-.sticky-notes-bar--vertical .sticky-notes-bar__group--deliver {
-  gap: 6px;
-  padding: 8px 0 0;
-  border-left: 0;
-  border-top: 1px solid var(--sn-hairline);
-}
-
-.sticky-notes-bar--vertical .sticky-notes-bar__button,
-.sticky-notes-bar--vertical .sticky-notes-bar__shots {
-  box-sizing: border-box;
-  width: 100%;
-  text-align: left;
-}
-
-.sticky-notes-bar--vertical .sticky-notes-bar__shots {
-  padding: 3px 8px;
-}
-
-.sticky-notes-bar--vertical .sticky-notes-bar__shoot .sticky-notes-bar__tool {
-  flex: 1;
-  width: auto;
-}
-
-.sticky-notes-bar--vertical .sticky-notes-bar__tool {
-  flex-direction: row;
-  justify-content: flex-start;
-  gap: 8px;
-  height: 34px;
-  padding: 0 8px;
-}
-
-.sticky-notes-bar--vertical .sticky-notes-bar__tool svg {
-  width: 18px;
-  height: 18px;
-}
-
-.sticky-notes-bar--vertical .sticky-notes-bar__caption {
-  font-size: 11px;
-}
-
-.sticky-notes-bar--vertical .sticky-notes-bar__auto {
-  height: 34px;
-}
-
-.sticky-notes-bar--vertical .sticky-notes-bar__tool .sticky-notes-bar__count {
-  position: static;
-  margin-left: auto;
-}
-
-.sticky-notes-bar--vertical .sticky-notes-bar__picker {
-  width: 100%;
-  max-width: none;
-}
-
-.sticky-notes-bar--vertical .sticky-notes-bar__button--send {
-  text-align: center;
-}
-
-/* footer: pin-sized icons, the pin's slot kept free on the right */
-.sticky-notes-bar--vertical .sticky-notes-bar__group--tools {
-  flex-direction: row;
+/* auto-shot: a checkbox row in the menu, the box drawn by hand for the palette */
+.sticky-notes-bar__auto {
+  display: flex;
   align-items: center;
-  gap: 4px;
-  height: var(--sn-size);
-  margin: 0 calc(var(--sn-size) + 4px) -8px -8px;
-  padding: 0 0 0 8px;
-  border-left: 0;
+  gap: 8px;
+  margin-top: 4px;
   border-top: 1px solid var(--sn-hairline);
+  padding-top: 9px;
 }
 
-.sticky-notes-bar--vertical .sticky-notes-bar__button--icon {
-  width: 32px;
-  height: 32px;
+.sticky-notes-bar__auto input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
 }
 
-.sticky-notes-bar--vertical .sticky-notes-bar__menu {
-  right: calc(100% + 12px);
-  bottom: 0;
+.sticky-notes-bar__check {
+  position: relative;
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  box-sizing: border-box;
+  border: 1.5px solid var(--sn-chrome-muted);
+}
+
+.sticky-notes-bar__auto input:checked + .sticky-notes-bar__check {
+  border-color: var(--sn-signal);
+  background: var(--sn-signal);
+}
+
+.sticky-notes-bar__auto input:checked + .sticky-notes-bar__check::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 0;
+  width: 4px;
+  height: 8px;
+  border: solid var(--sn-graphite);
+  border-width: 0 2px 2px 0;
+  transform: rotate(40deg);
+}
+
+.sticky-notes-bar__auto input:focus-visible + .sticky-notes-bar__check {
+  outline: 2px solid var(--sn-signal);
+  outline-offset: 2px;
 }
 
 /* Quiet status in the top-right corner, clear of the bar in either layout:

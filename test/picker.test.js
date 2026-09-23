@@ -1,8 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest"
 import { createPicker, QUEUE, QUEUE_LABEL, PICK_LABEL } from "../src/picker.js"
 
-const KEY = "/kids/12"
-const STORAGE_KEY = "sticky-notes:session:/kids/12"
+const STORAGE_KEY = "sticky-notes:session"
 const A = { id: "s1", cwd: "/home/dev/projects/krouzitko", label: "krouzitko" }
 const B = { id: "s2", cwd: "/home/dev", label: "home" }
 const C = { id: "s3", cwd: "/home/dev", label: "dev-33" }
@@ -21,7 +20,7 @@ describe("createPicker", () => {
     opened = 0
   })
 
-  const picker = () => createPicker({ doc: document, storage, key: KEY, onOpen: () => opened++ })
+  const picker = () => createPicker({ doc: document, storage, onOpen: () => opened++ })
   const labels = (el) => [...el.options].map((o) => o.textContent)
 
   it("selects the only live session by itself", () => {
@@ -50,7 +49,7 @@ describe("createPicker", () => {
     expect(p.label).toBe("dev-33")
   })
 
-  it("remembers the choice per key and restores it while that session is live", () => {
+  it("remembers the choice for every page and restores it while that session is live", () => {
     const p = picker()
     p.refresh([A, B])
     p.el.value = "s2"

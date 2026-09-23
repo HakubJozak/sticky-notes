@@ -82,48 +82,39 @@ describe("folded bar", () => {
   })
 })
 
-describe("layout", () => {
+describe("menu", () => {
   let storage, instance
 
   beforeEach(() => {
     document.body.innerHTML = '<main><button id="save">Save</button></main>'
     storage = fakeStorage()
-    instance = createStickyNotes({ key: KEY, storage, channel: null }).mount()
+    instance = createStickyNotes({ key: KEY, storage, channel: { sessions: async () => [{ id: "s1", cwd: "/p", label: "p" }], send: async () => ({ delivered: true }) } }).mount()
   })
 
   afterEach(() => instance.unmount())
 
-  const layoutItem = () => document.querySelector('[data-command="layout"]')
-  const follows = (a, b) => a.nextElementSibling === b
+  it("keeps auto-shot behind ⋯ and leaves the menu open while it is toggled", async () => {
+    await tick()
+    const menu = document.querySelector(".sticky-notes-bar__more")
+    const auto = menu.querySelector('[data-command="auto-shot"]')
+    expect(auto).not.toBeNull()
+    expect(auto.checked).toBe(true)
 
-  it("stacks vertically on request and remembers; auto-shot stays by the camera", () => {
-    const auto = document.querySelector(".sticky-notes-bar__auto")
-    expect(follows(document.querySelector('[data-command="screenshot"]'), auto)).toBe(true)
-    expect(layoutItem().title).toBe("Stack vertically")
+    menu.open = true
+    auto.click()
+    expect(auto.checked).toBe(false)
+    expect(storage.data.get("sticky-notes:auto-shot")).toBe("0")
+    expect(menu.open).toBe(true)
 
-    click(layoutItem())
-
-    expect(bar().classList.contains("sticky-notes-bar--vertical")).toBe(true)
-    expect(follows(document.querySelector('[data-command="screenshot"]'), auto)).toBe(true)
-    expect(layoutItem().title).toBe("Lay out horizontally")
-    expect(storage.data.get("sticky-notes:layout")).toBe("vertical")
-
-    click(layoutItem())
-    expect(bar().classList.contains("sticky-notes-bar--vertical")).toBe(false)
+    click(menu.querySelector('[data-command="export-markdown"]'))
+    expect(menu.open).toBe(false)
   })
 
-  it("keeps the toast in its own corner whatever the layout", () => {
-    const vertical = createStickyNotes({ key: "/v", storage: fakeStorage({ "sticky-notes:layout": "vertical", "sticky-notes:bar": "open" }), channel: null, root: document.body }).mount()
-
-    const last = [...document.querySelectorAll(".sticky-notes-toast")].at(-1)
-    expect(last.className).toBe("sticky-notes-toast")
-
-    click([...document.querySelectorAll(".sticky-notes-pin")].at(-1))
-    expect(last.className).toBe("sticky-notes-toast")
-    vertical.unmount()
+  it("has one layout: no switch, no vertical class", () => {
+    expect(document.querySelector('[data-command="layout"]')).toBeNull()
+    expect(bar().className).toBe("sticky-notes-bar")
   })
 })
-
 describe("orphaned notes", () => {
   const note = (id, path) => ({ id, path, anchored: true, text: "", ctx: "", note: "", created: "2026-09-03T00:00:00Z" })
   const orphans = () => document.querySelector('[data-command="drop-orphans"]')

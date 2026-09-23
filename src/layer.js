@@ -15,10 +15,6 @@ const ESCAPE_KEY = "Escape"
 const BAR_STATE_KEY = "sticky-notes:bar" // per browser, not per page: the reviewer opened the toolbar
 const BAR_OPEN = "open"
 const BAR_CLOSED = "closed"
-const LAYOUT_KEY = "sticky-notes:layout"
-const VERTICAL = "vertical"
-const HORIZONTAL = "horizontal"
-const VERTICAL_CLASS = "sticky-notes-bar--vertical"
 
 // toast kinds — the colour says how it went before the text is read
 export const INFO = "info"
@@ -44,7 +40,6 @@ const SEND_COMMAND = "send"
 const AUTO_SHOT_COMMAND = "auto-shot"
 const CONNECT_COMMAND = "connect"
 const PIN_COMMAND = "pin"
-const LAYOUT_COMMAND = "layout"
 const DROP_ORPHANS_COMMAND = "drop-orphans"
 
 const TOGGLE_LABEL = "Add note"
@@ -72,16 +67,11 @@ const NOTE_PLACEHOLDER = "note…"
 const SEND_LABEL = "Send"
 const PIN_LABEL = "sticky notes"
 const MORE_LABEL = "more"
-const LAYOUT_LABEL = { [HORIZONTAL]: "Stack vertically", [VERTICAL]: "Lay out horizontally" } // what the click does
-// the icon shows the layout a click gives: bars stacked, or bars in a row
-const LAYOUT_ICON = {
-  [HORIZONTAL]: `<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M2 2h12v3H2zM2 6.5h12v3H2zM2 11h12v3H2z"/></svg>`,
-  [VERTICAL]: `<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M2 2h3v12H2zM6.5 2h3v12h-3zM11 2h3v12h-3z"/></svg>`,
-}
 const MORE_GLYPH = "⋯"
 const CAPTURING_LABEL = (done, total) => `capturing ${done}/${total}`
 const SENDING_LABEL = "sending…"
-const AUTO_SHOT_TITLE = "auto-shot: screenshot every noted element on Send"
+const AUTO_SHOT_LABEL = "Auto-shot on Send"
+const AUTO_SHOT_TITLE = "screenshot every noted element on Send"
 const CONNECT_LABEL = "Connect"
 const ATTACHED_MESSAGE = (n) => `attached to #${n}`
 const SHOTS_LABEL = (n) => (n ? `${n} shot${n === 1 ? "" : "s"}` : "")
@@ -111,8 +101,6 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
   let toast = null
   let sendButton = null
   let moreEl = null
-  let layoutButton = null
-  let layout = HORIZONTAL
   let toggleButton = null
   let countEl = null
   let exportPane = null
@@ -177,10 +165,7 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
     bar.innerHTML = `
       <span class="sticky-notes-bar__group">
         <button class="sticky-notes-bar__button sticky-notes-bar__tool" type="button" data-command="${TOGGLE_COMMAND}" aria-pressed="false">${PLUS_ICON}<span class="sticky-notes-bar__caption">${TOGGLE_LABEL}</span><span class="sticky-notes-bar__count" hidden>0</span></button>
-        <span class="sticky-notes-bar__shoot">
-          <button class="sticky-notes-bar__button sticky-notes-bar__tool" type="button" data-command="${SCREENSHOT_COMMAND}">${CAMERA_ICON}<span class="sticky-notes-bar__caption">${SCREENSHOT_LABEL}</span></button>
-          <label class="sticky-notes-bar__auto" title="${AUTO_SHOT_TITLE}" ${SEND_ATTRIBUTE} hidden><input type="checkbox" data-command="${AUTO_SHOT_COMMAND}" aria-label="${AUTO_SHOT_TITLE}"><span class="sticky-notes-bar__check"></span></label>
-        </span>
+        <button class="sticky-notes-bar__button sticky-notes-bar__tool" type="button" data-command="${SCREENSHOT_COMMAND}">${CAMERA_ICON}<span class="sticky-notes-bar__caption">${SCREENSHOT_LABEL}</span></button>
         <button class="sticky-notes-bar__button sticky-notes-bar__tool" type="button" data-command="${CLEAR_COMMAND}" title="${CLEAR_TITLE}">${ERASER_ICON}<span class="sticky-notes-bar__caption">${CLEAR_LABEL}</span></button>
         <button class="sticky-notes-bar__button sticky-notes-bar__orphans" type="button" data-command="${DROP_ORPHANS_COMMAND}" title="${ORPHANS_TITLE}" hidden></button>
       </span>
@@ -195,18 +180,14 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
           <button class="sticky-notes-bar__item" type="button" data-command="${EXPORT_MARKDOWN_COMMAND}">${MARKDOWN_LABEL}</button>
           <button class="sticky-notes-bar__item" type="button" data-command="${EXPORT_JSON_COMMAND}">${JSON_LABEL}</button>
           <button class="sticky-notes-bar__item" type="button" data-command="${DOWNLOAD_COMMAND}" disabled>${DOWNLOAD_LABEL}</button>
+          <label class="sticky-notes-bar__item sticky-notes-bar__auto" title="${AUTO_SHOT_TITLE}" ${SEND_ATTRIBUTE} hidden><input type="checkbox" data-command="${AUTO_SHOT_COMMAND}"><span class="sticky-notes-bar__check"></span>${AUTO_SHOT_LABEL}</label>
         </div>
-      </details>
-      <span class="sticky-notes-bar__group sticky-notes-bar__group--tools">
-        <button class="sticky-notes-bar__button sticky-notes-bar__button--icon" type="button" data-command="${LAYOUT_COMMAND}"></button>
-      </span>`
-    picker = createPicker({ doc, storage, key, onOpen: onSessionsOpen })
+      </details>`
+    picker = createPicker({ doc, storage, onOpen: onSessionsOpen })
     picker.el.setAttribute(SEND_ATTRIBUTE, "")
     picker.el.hidden = true
     bar.querySelector(`[data-command="${SEND_COMMAND}"]`).before(picker.el) // joined: pick, then Send
     moreEl = bar.querySelector(".sticky-notes-bar__more")
-    layoutButton = bar.querySelector(`[data-command="${LAYOUT_COMMAND}"]`)
-    layoutButton.before(moreEl) // ⋯ and the layout toggle share the footer row
     shotsEl = bar.querySelector(".sticky-notes-bar__shots")
     orphansEl = bar.querySelector(`[data-command="${DROP_ORPHANS_COMMAND}"]`)
     autoShotInput = bar.querySelector(`[data-command="${AUTO_SHOT_COMMAND}"]`)
@@ -230,18 +211,7 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
 
     bar.addEventListener("click", onBarClick)
     pin.addEventListener("click", () => setOpen(bar.hidden))
-    setLayout(readItem(LAYOUT_KEY) === VERTICAL ? VERTICAL : HORIZONTAL)
     updatePin()
-  }
-
-  // Horizontal: a strip left of the pin. Vertical: a column wrapping it.
-  function setLayout(next) {
-    layout = next
-    writeItem(LAYOUT_KEY, layout)
-    bar.classList.toggle(VERTICAL_CLASS, layout === VERTICAL)
-    layoutButton.innerHTML = LAYOUT_ICON[layout]
-    layoutButton.title = LAYOUT_LABEL[layout]
-    layoutButton.setAttribute("aria-label", LAYOUT_LABEL[layout])
   }
 
   // Folding the bar ends picking too: the pressed Add note would be out of sight.
@@ -270,7 +240,7 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
     const command = event.target.closest("[data-command]")?.dataset.command
     if (!command) return
 
-    moreEl.open = false // a picked menu item closes the menu
+    if (command !== AUTO_SHOT_COMMAND) moreEl.open = false // a picked menu item closes the menu; a toggle stays in view
 
     if (command === TOGGLE_COMMAND) setPicking(!picking)
     if (command === SCREENSHOT_COMMAND) screenshot()
@@ -282,7 +252,6 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
     if (command === SEND_COMMAND) onSend()
     if (command === AUTO_SHOT_COMMAND) onAutoShot(event.target.checked)
     if (command === CONNECT_COMMAND) onConnect()
-    if (command === LAYOUT_COMMAND) setLayout(layout === VERTICAL ? HORIZONTAL : VERTICAL)
   }
 
   function listen() {
@@ -333,7 +302,7 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
 
   // ms: callers pass a longer time for anything the reviewer must actually read.
   // The toast lives outside the bar, in the opposite corner: it shows while the
-  // bar is folded and never hides behind it in either layout.
+  // bar is folded and never hides behind it.
   function message(text, ms = MESSAGE_MS, kind = INFO) {
     toast.textContent = text
     toast.dataset.kind = kind
@@ -631,7 +600,6 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
     setChannel,
     setConnectAllowed,
     setSending,
-    setLayout,
     session,
     sessionLabel,
     refreshSessions,
