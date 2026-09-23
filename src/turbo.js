@@ -4,6 +4,7 @@
 import { mount } from "./index.js"
 
 const DEFAULT_SELECTOR = "[data-sticky-notes]"
+const LOG_PREFIX = "[sticky-notes]" // console.debug: shown at the Verbose level only
 
 let selector = DEFAULT_SELECTOR
 let listening = false
@@ -24,7 +25,10 @@ function listen() {
 
   document.addEventListener("turbo:load", remount)
   document.addEventListener("turbo:render", remount) // stream-driven renders never reach turbo:load
-  document.addEventListener("turbo:before-cache", () => notes?.unmount())
+  document.addEventListener("turbo:before-cache", () => {
+    notes?.unmount()
+    trace("turbo:before-cache", "unmounted")
+  })
   document.addEventListener("turbo:frame-render", () => notes?.refresh())
   document.addEventListener("turbo:morph", () => notes?.refresh())
 }
@@ -36,11 +40,21 @@ const anchorsOf = (el) => el.dataset.anchors?.split(/\s+/).filter(Boolean)
 // inline script and turbo:load both land here on every page: the second call
 // finds the layer already on this element and leaves it alone — one mount, one
 // daemon call.
-function remount() {
+function remount(event) {
   const el = document.querySelector(selector)
-  if (el && notes?.mounted && notes.root === el) return notes
+  const why = event?.type ?? "attach"
+
+  if (el && notes?.mounted && notes.root === el) {
+    trace(why, "kept")
+    return notes
+  }
 
   notes = el ? mount({ root: el, key: el.dataset.key || undefined, anchors: anchorsOf(el), channel: el.dataset.channel, channelToken: el.dataset.channelToken, connect: false }) : null
+  trace(why, el ? "mounted" : "no host element")
 
   return notes
 }
+
+// A pin that vanished after a Turbo visit is diagnosed from these lines: which
+// event ran, and whether it found the host element in the rendered body.
+const trace = (why, what) => console.debug(LOG_PREFIX, why, what, location.pathname)
