@@ -1,50 +1,85 @@
 /* Injected once at mount as <style id="sticky-notes-style">.
-   `all: unset` on controls and a z-index near the maximum keep the layer intact
-   on host pages with aggressive CSS. Host pages may lack a [hidden] reset, so we
-   ship our own. */
 
-/* The pin is all that shows until the reviewer opens the bar; notes stay visible. */
+   One material system: a graphite tool (pin, bar, toast, badges, menu) and
+   yellow paper (the notes). The only yellow in the tool is the signal — the
+   pressed tool, Send, the outline on a noted element — so the notes stay the
+   one bright thing on a page that may well be yellow itself.
+
+   `all: unset` on controls and a z-index near the maximum keep the layer
+   intact on host pages with aggressive CSS. Host pages may lack a [hidden]
+   reset, so we ship our own. */
+
+.sticky-notes-pin,
+.sticky-notes-bar,
+.sticky-notes-toast,
+.sticky-note,
+.sticky-note-badge,
+.sticky-notes-export {
+  --sn-paper: #fff3b0;
+  --sn-paper-edge: #d9b93c;
+  --sn-paper-ink: #6b5a12;
+  --sn-ink: #1e2430;
+  --sn-graphite: #23262d;
+  --sn-graphite-2: #32363f;
+  --sn-chrome: #f3efdd;
+  --sn-chrome-muted: #a9a597;
+  --sn-hairline: rgba(243, 239, 221, 0.14);
+  --sn-signal: #e0b400;
+  --sn-signal-hover: #f0c400;
+  --sn-danger: #e5484d;
+  --sn-ok: #3fb950;
+  --sn-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --sn-sans: "IBM Plex Sans", system-ui, sans-serif;
+  --sn-shadow: 0 10px 24px -12px rgba(0, 0, 0, 0.55);
+  --sn-size: 44px; /* pin edge = bar height */
+  --sn-gap: 16px; /* distance from the viewport corner */
+}
+
+/* The pin is all that shows until the reviewer opens the bar; notes stay visible.
+   It is also the bar's right end cap, so the two read as one strip. */
 .sticky-notes-pin {
   all: unset;
   position: fixed;
-  right: 16px;
-  bottom: 16px;
+  right: var(--sn-gap);
+  bottom: var(--sn-gap);
   z-index: 2147482931;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: var(--sn-size);
+  height: var(--sn-size);
   box-sizing: border-box;
-  background: #fff3b0;
-  color: #6b5a12;
-  border: 1px solid #d9b93c;
-  box-shadow: 2px 3px 0 rgba(0, 0, 0, 0.18);
+  background: var(--sn-graphite);
+  color: var(--sn-paper);
+  box-shadow: var(--sn-shadow);
   cursor: pointer;
 }
 
 .sticky-notes-pin:hover {
-  background: #e0b400;
-  color: #1e2430;
+  background: var(--sn-graphite-2);
 }
 
 .sticky-notes-pin[aria-expanded="true"] {
-  background: #1e2430;
-  color: #fff3b0;
-  border-color: #1e2430;
+  background: var(--sn-signal);
+  color: var(--sn-graphite);
+}
+
+.sticky-notes-pin[aria-expanded="true"]:hover {
+  background: var(--sn-signal-hover);
 }
 
 .sticky-notes-pin__count {
   position: absolute;
-  top: -7px;
-  right: -7px;
+  top: -6px;
+  right: -6px;
   min-width: 16px;
   box-sizing: border-box;
-  background: #1e2430;
-  color: #fff3b0;
-  font: 700 10px/16px "IBM Plex Mono", ui-monospace, Menlo, monospace;
-  border-radius: 9px;
   padding: 0 4px;
+  border-radius: 8px;
+  background: var(--sn-paper);
+  color: var(--sn-graphite);
+  box-shadow: 0 0 0 2px var(--sn-graphite);
+  font: 700 10px/16px var(--sn-mono);
   text-align: center;
 }
 
@@ -52,75 +87,77 @@
   display: none !important;
 }
 
-/* The bar docks onto the pin and wears the note's paper. Left to right, in the
-   order of the work: make notes → deliver them → everything else behind ⋯. */
+/* The bar docks onto the pin. Left to right, in the order of the work:
+   make notes → deliver them → everything else behind ⋯. */
 .sticky-notes-bar {
   position: fixed;
-  right: 51px;
-  bottom: 16px;
+  right: calc(var(--sn-gap) + var(--sn-size));
+  bottom: var(--sn-gap);
   z-index: 2147482930;
   display: flex;
-  gap: 12px;
+  gap: 8px;
   align-items: center;
   box-sizing: border-box;
-  background: #fff3b0;
-  color: #1e2430;
-  border: 1px solid #d9b93c;
-  border-right: 0;
-  padding: 5px 10px;
-  box-shadow: 2px 3px 0 rgba(0, 0, 0, 0.18);
-  font: 12px "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  height: var(--sn-size);
+  padding: 0 6px 0 4px;
+  background: var(--sn-graphite);
+  color: var(--sn-chrome);
+  box-shadow: var(--sn-shadow);
+  font: 11px var(--sn-mono);
+  line-height: 1;
 }
 
 .sticky-notes-bar__group {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
 }
 
-/* the delivery group is the one with a dark block in it; keep it apart */
-.sticky-notes-bar__group--deliver {
+/* groups are separated by a hairline, not by boxes */
+.sticky-notes-bar__group--deliver,
+.sticky-notes-bar__group--tools {
   gap: 6px;
-  padding-left: 12px;
-  border-left: 1px solid #d9b93c;
+  padding-left: 8px;
+  border-left: 1px solid var(--sn-hairline);
 }
 
 .sticky-notes-bar__button {
   all: unset;
   cursor: pointer;
-  padding: 5px 8px;
-  border: 1px solid transparent;
-  color: #1e2430;
+  padding: 6px 8px;
+  color: var(--sn-chrome);
   font: inherit;
   line-height: 1;
   white-space: nowrap;
 }
 
 .sticky-notes-bar__button:disabled {
-  opacity: 0.45;
+  color: var(--sn-chrome-muted);
   cursor: default;
 }
 
 .sticky-notes-bar__button:hover:not(:disabled),
 .sticky-notes-bar__more[open] > summary {
-  background: rgba(107, 90, 18, 0.12);
+  background: var(--sn-graphite-2);
 }
 
 .sticky-notes-bar__button:focus-visible,
 .sticky-notes-bar__item:focus-visible,
 .sticky-notes-bar__picker:focus-visible,
-.sticky-notes-pin:focus-visible {
-  outline: 2px solid #1e2430;
-  outline-offset: 1px;
+.sticky-notes-pin:focus-visible,
+.sticky-note__button:focus-visible {
+  outline: 2px solid var(--sn-signal);
+  outline-offset: -2px;
 }
 
-.sticky-notes-bar__button[aria-pressed="true"] {
-  background: #1e2430;
-  color: #fff3b0;
+/* the pressed tool is the yellow tile; the others are flat */
+.sticky-notes-bar__button[aria-pressed="true"],
+.sticky-notes-bar__button[aria-pressed="true"]:hover {
+  background: var(--sn-signal);
+  color: var(--sn-graphite);
 }
 
-/* Tools, editor-palette style: a big icon over a small caption, the count
-   pinned to the corner of Add note. */
+/* Tools, palette style: an icon over a small caption. */
 .sticky-notes-bar__tool {
   position: relative;
   display: inline-flex;
@@ -128,91 +165,161 @@
   align-items: center;
   justify-content: center;
   gap: 3px;
-  min-width: 64px;
-  height: 46px;
-  padding: 4px 6px;
+  min-width: 54px;
+  height: 40px;
+  padding: 0 6px;
+}
+
+.sticky-notes-bar__tool svg {
+  width: 20px;
+  height: 20px;
 }
 
 .sticky-notes-bar__caption {
-  font-size: 10px;
+  font-size: 9.5px;
   line-height: 1;
   white-space: nowrap;
 }
 
 .sticky-notes-bar__tool .sticky-notes-bar__count {
   position: absolute;
-  top: 2px;
-  right: 4px;
+  top: 3px;
+  right: 5px;
 }
 
 .sticky-notes-bar__tool .sticky-notes-bar__count[hidden] {
   display: none !important;
 }
 
-/* the pressed tool is the dark tile; the others are flat */
-.sticky-notes-bar__tool:hover:not(:disabled):not([aria-pressed="true"]) {
-  border-color: #d9b93c;
-}
-
 .sticky-notes-bar__count {
   display: inline-block;
   min-width: 14px;
+  box-sizing: border-box;
   padding: 0 4px;
-  border-radius: 8px;
-  background: #1e2430;
-  color: #fff3b0;
-  font: 700 10px/14px "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  border-radius: 7px;
+  background: var(--sn-paper);
+  color: var(--sn-graphite);
+  font: 700 9px/14px var(--sn-mono);
   text-align: center;
 }
 
 .sticky-notes-bar__button[aria-pressed="true"] .sticky-notes-bar__count {
-  background: #fff3b0;
-  color: #1e2430;
+  background: var(--sn-graphite);
+  color: var(--sn-paper);
+}
+
+/* the eraser warns on hover: it takes every note */
+.sticky-notes-bar__tool[data-command="clear"]:hover:not(:disabled) {
+  color: var(--sn-danger);
+}
+
+/* Screenshot and its auto-shot box: one row in both layouts */
+.sticky-notes-bar__shoot {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* auto-shot: a small box beside the camera; a yellow check when it is on */
+.sticky-notes-bar__auto {
+  display: inline-flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 6px 0 2px;
+  cursor: pointer;
+}
+
+.sticky-notes-bar__auto:hover {
+  background: var(--sn-graphite-2);
+}
+
+.sticky-notes-bar__auto input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sticky-notes-bar__check {
+  position: relative;
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  box-sizing: border-box;
+  border: 1.5px solid var(--sn-chrome-muted);
+}
+
+.sticky-notes-bar__auto input:checked + .sticky-notes-bar__check {
+  border-color: var(--sn-signal);
+  background: var(--sn-signal);
+}
+
+.sticky-notes-bar__auto input:checked + .sticky-notes-bar__check::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 0;
+  width: 4px;
+  height: 8px;
+  border: solid var(--sn-graphite);
+  border-width: 0 2px 2px 0;
+  transform: rotate(40deg);
+}
+
+.sticky-notes-bar__auto input:focus-visible + .sticky-notes-bar__check {
+  outline: 2px solid var(--sn-signal);
+  outline-offset: 2px;
+}
+
+/* notes the page lost: a warning-coloured count, the click deletes them */
+.sticky-notes-bar__orphans {
+  color: var(--sn-danger);
 }
 
 /* picker + Send are one control: pick where, then go */
 .sticky-notes-bar__picker {
   all: unset;
   box-sizing: border-box;
-  height: 26px;
-  padding: 0 6px;
-  border: 1px solid #d9b93c;
-  border-right: 0;
-  background: #fffbe0;
-  color: #1e2430;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--sn-hairline);
+  background: var(--sn-graphite-2);
+  color: var(--sn-chrome);
   font: inherit;
-  max-width: 220px;
+  max-width: 200px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   cursor: pointer;
 }
 
-/* the eraser warns on hover: it takes every note */
-.sticky-notes-bar__tool[data-command="clear"]:hover:not(:disabled) {
-  color: #b3261e;
-  border-color: #b3261e;
+.sticky-notes-bar__picker:hover {
+  border-color: var(--sn-chrome-muted);
 }
 
 .sticky-notes-bar__button--send {
-  height: 26px;
+  height: 28px;
   box-sizing: border-box;
   padding: 0 12px;
-  background: #1e2430;
-  color: #fff3b0;
-  border-color: #1e2430;
+  background: var(--sn-signal);
+  color: var(--sn-graphite);
   font-weight: 700;
 }
 
 .sticky-notes-bar__button--send:hover:not(:disabled) {
-  background: #2f3748;
+  background: var(--sn-signal-hover);
 }
 
 .sticky-notes-bar__button--send:disabled {
-  opacity: 1;
-  background: #6b5a12;
-  border-color: #6b5a12;
+  background: var(--sn-graphite-2);
+  color: var(--sn-chrome);
   font-weight: 400;
+}
+
+.sticky-notes-bar__shots {
+  color: var(--sn-chrome-muted);
+  white-space: nowrap;
 }
 
 /* `all: unset` on the bar controls beats the UA [hidden] rule — restore it */
@@ -241,77 +348,7 @@
   }
 }
 
-/* Screenshot and its auto-shot checkbox: one row in both layouts */
-.sticky-notes-bar__shoot {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-}
-
-/* auto-shot: a bare box next to the camera; a red check when it is on */
-.sticky-notes-bar__auto {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px;
-  cursor: pointer;
-}
-
-.sticky-notes-bar__auto input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: 0;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.sticky-notes-bar__check {
-  position: relative;
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  box-sizing: border-box;
-  background: #fffbe0;
-  border: 1px solid #6b5a12;
-}
-
-.sticky-notes-bar__auto input:checked + .sticky-notes-bar__check {
-  border-color: #b3261e;
-}
-
-.sticky-notes-bar__auto input:checked + .sticky-notes-bar__check::after {
-  content: "";
-  position: absolute;
-  left: 4px;
-  top: 0;
-  width: 5px;
-  height: 10px;
-  border: solid #b3261e;
-  border-width: 0 2.5px 2.5px 0;
-  transform: rotate(40deg);
-}
-
-.sticky-notes-bar__auto input:focus-visible + .sticky-notes-bar__check {
-  outline: 2px solid #1e2430;
-  outline-offset: 1px;
-}
-
-.sticky-notes-bar__shots {
-  color: #6b5a12;
-  white-space: nowrap;
-}
-
-/* notes the page lost: a warning-coloured count, the click deletes them */
-.sticky-notes-bar__orphans {
-  color: #b3261e;
-  border-color: #b3261e;
-}
-
 /* ⋯ and the layout switch: icon-only, but never smaller than a fingertip */
-.sticky-notes-bar__group--tools {
-  gap: 2px;
-}
-
 .sticky-notes-bar__button--icon {
   display: inline-flex;
   align-items: center;
@@ -323,7 +360,7 @@
   line-height: 1;
 }
 
-/* ⋯ — exports, download, delete: needed, not often */
+/* ⋯ — exports, download: needed, not often */
 .sticky-notes-bar__more {
   position: relative;
 }
@@ -339,32 +376,32 @@
 .sticky-notes-bar__menu {
   position: absolute;
   right: 0;
-  bottom: calc(100% + 8px);
+  bottom: calc(100% + 10px);
   display: flex;
   flex-direction: column;
   min-width: 190px;
   padding: 4px 0;
-  background: #fff3b0;
-  border: 1px solid #d9b93c;
-  box-shadow: 2px 3px 0 rgba(0, 0, 0, 0.18);
+  background: var(--sn-graphite);
+  border: 1px solid var(--sn-hairline);
+  box-shadow: var(--sn-shadow);
 }
 
 .sticky-notes-bar__item {
   all: unset;
   display: block;
-  padding: 6px 12px;
-  color: #1e2430;
+  padding: 7px 12px;
+  color: var(--sn-chrome);
   font: inherit;
   white-space: nowrap;
   cursor: pointer;
 }
 
 .sticky-notes-bar__item:hover:not(:disabled) {
-  background: rgba(107, 90, 18, 0.12);
+  background: var(--sn-graphite-2);
 }
 
 .sticky-notes-bar__item:disabled {
-  opacity: 0.45;
+  color: var(--sn-chrome-muted);
   cursor: default;
 }
 
@@ -375,11 +412,10 @@
   bottom: 8px;
   flex-direction: column;
   align-items: stretch;
-  gap: 8px;
+  gap: 6px;
   height: auto;
-  width: 200px;
-  padding: 8px;
-  border-right: 1px solid #d9b93c;
+  width: 188px;
+  padding: 6px 8px 8px;
 }
 
 .sticky-notes-bar--vertical .sticky-notes-bar__group {
@@ -388,9 +424,10 @@
 }
 
 .sticky-notes-bar--vertical .sticky-notes-bar__group--deliver {
+  gap: 6px;
   padding: 8px 0 0;
   border-left: 0;
-  border-top: 1px solid #d9b93c;
+  border-top: 1px solid var(--sn-hairline);
 }
 
 .sticky-notes-bar--vertical .sticky-notes-bar__button,
@@ -413,12 +450,21 @@
   flex-direction: row;
   justify-content: flex-start;
   gap: 8px;
-  height: 36px;
+  height: 34px;
   padding: 0 8px;
 }
 
+.sticky-notes-bar--vertical .sticky-notes-bar__tool svg {
+  width: 18px;
+  height: 18px;
+}
+
 .sticky-notes-bar--vertical .sticky-notes-bar__caption {
-  font-size: 12px;
+  font-size: 11px;
+}
+
+.sticky-notes-bar--vertical .sticky-notes-bar__auto {
+  height: 34px;
 }
 
 .sticky-notes-bar--vertical .sticky-notes-bar__tool .sticky-notes-bar__count {
@@ -429,8 +475,6 @@
 .sticky-notes-bar--vertical .sticky-notes-bar__picker {
   width: 100%;
   max-width: none;
-  border-right: 1px solid #d9b93c;
-  border-bottom: 0;
 }
 
 .sticky-notes-bar--vertical .sticky-notes-bar__button--send {
@@ -442,14 +486,16 @@
   flex-direction: row;
   align-items: center;
   gap: 4px;
-  height: 36px;
-  margin-right: 44px;
+  height: var(--sn-size);
+  margin: 0 calc(var(--sn-size) + 4px) -8px -8px;
+  padding: 0 0 0 8px;
+  border-left: 0;
+  border-top: 1px solid var(--sn-hairline);
 }
 
 .sticky-notes-bar--vertical .sticky-notes-bar__button--icon {
-  width: 36px;
-  height: 36px;
-  border-color: #d9b93c;
+  width: 32px;
+  height: 32px;
 }
 
 .sticky-notes-bar--vertical .sticky-notes-bar__menu {
@@ -461,26 +507,25 @@
    what just happened, in the colour of how it went. */
 .sticky-notes-toast {
   position: fixed;
-  top: 16px;
-  right: 16px;
+  top: var(--sn-gap);
+  right: var(--sn-gap);
   z-index: 2147482929;
   max-width: 320px;
-  padding: 6px 10px;
-  background: #fff3b0;
-  color: #1e2430;
-  border: 1px solid #d9b93c;
-  border-left: 3px solid #d9b93c;
-  box-shadow: 2px 3px 0 rgba(0, 0, 0, 0.18);
-  font: 12px "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  padding: 8px 12px;
+  background: var(--sn-graphite);
+  color: var(--sn-chrome);
+  border-left: 3px solid var(--sn-signal);
+  box-shadow: var(--sn-shadow);
+  font: 11px var(--sn-mono);
   animation: sticky-notes-rise 0.15s ease-out;
 }
 
 .sticky-notes-toast[data-kind="ok"] {
-  border-left-color: #2e8b57;
+  border-left-color: var(--sn-ok);
 }
 
 .sticky-notes-toast[data-kind="error"] {
-  border-left-color: #b3261e;
+  border-left-color: var(--sn-danger);
 }
 
 .sticky-notes-toast[hidden] {
@@ -525,6 +570,7 @@ body.sticky-notes-picking * {
   overflow: visible;
 }
 
+/* The note: a square of paper, lifted just off the page. */
 .sticky-note {
   position: absolute;
   z-index: 2147482920;
@@ -538,13 +584,13 @@ body.sticky-notes-picking * {
   resize: both;
   overflow: hidden;
   margin: 0;
-  background: #fff3b0;
-  color: #1e2430;
-  border: 1px solid #d9b93c;
+  background: var(--sn-paper);
+  color: var(--sn-ink);
+  border: 0;
   border-radius: 0;
-  box-shadow: 2px 3px 0 rgba(0, 0, 0, 0.18);
+  box-shadow: 0 1px 0 rgba(107, 90, 18, 0.25), 0 10px 22px -10px rgba(30, 36, 48, 0.45);
   padding: 6px 8px 8px;
-  font: 12px/1.4 "IBM Plex Sans", system-ui, sans-serif;
+  font: 13px/1.45 var(--sn-sans);
   text-align: left;
 }
 
@@ -554,18 +600,19 @@ body.sticky-notes-picking * {
 }
 
 .sticky-note--dragging {
-  box-shadow: 6px 8px 0 rgba(0, 0, 0, 0.22);
-  opacity: 0.95;
+  box-shadow: 0 1px 0 rgba(107, 90, 18, 0.25), 0 18px 30px -12px rgba(30, 36, 48, 0.5);
 }
 
+/* header: number, what the note points at, the two controls — draggable */
 .sticky-note__header {
   display: flex;
   align-items: center;
   gap: 6px;
+  height: 18px;
   margin: 0 0 4px;
   padding: 0;
-  font: 600 11px "IBM Plex Mono", ui-monospace, Menlo, monospace;
-  color: #6b5a12;
+  font: 500 10px var(--sn-mono);
+  color: var(--sn-paper-ink);
   cursor: grab;
   user-select: none;
   touch-action: none;
@@ -576,20 +623,26 @@ body.sticky-notes-picking * {
 }
 
 .sticky-note__index {
-  background: #1e2430;
-  color: #fff3b0;
-  border-radius: 9px;
-  padding: 0 6px;
-  font: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--sn-graphite);
+  color: var(--sn-paper);
+  font: 700 10px/1 var(--sn-mono);
 }
 
+/* the quoted element text; the CSS path lives in its title */
 .sticky-note__path {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font: inherit;
-  font-size: 10px;
   background: none;
   color: inherit;
   padding: 0;
@@ -597,22 +650,23 @@ body.sticky-notes-picking * {
 
 .sticky-note__button {
   all: unset;
-  color: #6b5a12;
-  padding: 0 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  color: var(--sn-paper-ink);
   cursor: pointer;
-  font-size: 14px;
-  line-height: 18px;
+  font: 700 12px/1 var(--sn-mono);
 }
 
-.sticky-note__button[data-command="remove"] {
-  font-weight: 700;
-  border: 1px solid transparent;
+.sticky-note__button:hover {
+  background: rgba(107, 90, 18, 0.14);
 }
 
 .sticky-note__button[data-command="remove"]:hover {
   color: #fff;
-  background: #b3261e;
-  border-color: #b3261e;
+  background: var(--sn-danger);
 }
 
 .sticky-note__text {
@@ -628,32 +682,44 @@ body.sticky-notes-picking * {
   overflow: auto;
 }
 
+.sticky-note__text::placeholder {
+  color: rgba(107, 90, 18, 0.55);
+}
+
+/* the number on the element itself; a paper ring lifts it off dark hosts */
 .sticky-note-badge {
   position: absolute;
   z-index: 2147482910;
-  background: #1e2430;
-  color: #fff3b0;
-  font: 700 10px "IBM Plex Mono", ui-monospace, Menlo, monospace;
-  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  box-sizing: border-box;
   padding: 0 5px;
-  line-height: 16px;
+  border-radius: 9px;
+  background: var(--sn-graphite);
+  color: var(--sn-paper);
+  box-shadow: 0 0 0 1.5px var(--sn-paper);
+  font: 700 10px/1 var(--sn-mono);
   cursor: pointer;
 }
 
 .sticky-notes-export {
   position: fixed;
-  left: 16px;
-  right: 16px;
-  bottom: 64px;
+  left: var(--sn-gap);
+  right: var(--sn-gap);
+  bottom: calc(var(--sn-gap) * 2 + var(--sn-size));
   max-height: 40vh;
   overflow: auto;
-  z-index: 2147482930;
+  z-index: 2147482925; /* under the bar: the vertical column must stay clickable */
   margin: 0;
   background: var(--card, #fff);
   color: var(--ink, #1e2430);
-  border: 1px solid var(--line, #c8ccd4);
+  border: 1px solid var(--sn-graphite);
+  box-shadow: var(--sn-shadow);
   padding: 12px;
-  font: 12px "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  font: 12px var(--sn-mono);
   white-space: pre-wrap;
   text-align: left;
 }
@@ -678,4 +744,3 @@ body.sticky-notes-picking * {
 .sticky-notes-screenshot__rect[hidden] {
   display: none !important;
 }
-

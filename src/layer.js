@@ -92,9 +92,10 @@ const BUSY_CLASS = "sticky-notes-bar__button--busy"
 // A pushpin: the one thing left on the page while the toolbar is folded away.
 const PIN_ICON = `<svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M9.5 1.5 14.5 6.5l-1.4 1.4-.7-.7L9.6 10l.2 2.8L8.4 14.2 5.7 11.5 2 15.2l-1.2-1.2 3.7-3.7L1.8 7.6l1.4-1.4 2.8.2 2.8-2.8-.7-.7z"/></svg>`
 
-const LEADER_COLOR = "#c9a227"
+// graphite, like the badge it starts from; dashed so it never reads as a host border
+const LEADER_COLOR = "rgba(35, 38, 45, 0.6)"
 const LEADER_WIDTH = 1.5
-const LEADER_DASH = "2 4"
+const LEADER_DASH = "3 4"
 const ANCHOR_DOT_RADIUS = 2.5
 
 export function createLayer({ root, key, storage, onPick, onChange, onRemove, onClear, onDropOrphans, onExport, onSend, onShot, onAutoShot, onConnect, onSessionsOpen }) {
@@ -469,9 +470,10 @@ export function createLayer({ root, key, storage, onPick, onChange, onRemove, on
       </header>
       <textarea class="sticky-note__text" placeholder="${NOTE_PLACEHOLDER}"></textarea>`
 
-    // textContent, not interpolation: the path comes from the host page
+    // textContent, not interpolation: both strings come from the host page.
+    // The quoted text says what the note is about; the path is for the export.
     const path = box.querySelector(".sticky-note__path")
-    path.textContent = note.path
+    path.textContent = note.text || note.path
     path.title = note.path
 
     const text = box.querySelector(".sticky-note__text")
