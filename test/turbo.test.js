@@ -25,3 +25,22 @@ it("mounts once across repeated attach calls and unmounts before caching", () =>
   document.dispatchEvent(new Event("turbo:before-cache"))
   expect(document.querySelectorAll(BAR)).toHaveLength(0)
 })
+
+// turbo:load and the inline script both call in for the same element — the
+// second call must not rebuild the layer (two daemon calls, a flash of chrome).
+it("leaves a layer that is already on the current element alone", () => {
+  document.body.innerHTML = `<div data-sticky-notes data-key="${KEY}"></div>`
+
+  const first = attach()
+  const pin = document.querySelector(".sticky-notes-pin")
+  document.dispatchEvent(new Event("turbo:load"))
+
+  expect(attach()).toBe(first)
+  expect(document.querySelector(".sticky-notes-pin")).toBe(pin)
+
+  // a new body (Turbo visit) has a new element → a fresh mount
+  document.body.innerHTML = `<div data-sticky-notes data-key="${KEY}"></div>`
+  document.dispatchEvent(new Event("turbo:load"))
+  expect(document.querySelectorAll(".sticky-notes-pin")).toHaveLength(1)
+  expect(document.querySelector(".sticky-notes-pin")).not.toBe(pin)
+})

@@ -23,6 +23,7 @@ function listen() {
   listening = true
 
   document.addEventListener("turbo:load", remount)
+  document.addEventListener("turbo:render", remount) // stream-driven renders never reach turbo:load
   document.addEventListener("turbo:before-cache", () => notes?.unmount())
   document.addEventListener("turbo:frame-render", () => notes?.refresh())
   document.addEventListener("turbo:morph", () => notes?.refresh())
@@ -31,9 +32,14 @@ function listen() {
 // data-anchors="data-qa data-cy" → attributes the host treats as stable anchors
 const anchorsOf = (el) => el.dataset.anchors?.split(/\s+/).filter(Boolean)
 
-// The host element is a new node after every visit, so always re-find it.
+// The host element is a new node after every visit, so always re-find it. The
+// inline script and turbo:load both land here on every page: the second call
+// finds the layer already on this element and leaves it alone — one mount, one
+// daemon call.
 function remount() {
   const el = document.querySelector(selector)
+  if (el && notes?.mounted && notes.root === el) return notes
+
   notes = el ? mount({ root: el, key: el.dataset.key || undefined, anchors: anchorsOf(el), channel: el.dataset.channel, channelToken: el.dataset.channelToken, connect: false }) : null
 
   return notes
